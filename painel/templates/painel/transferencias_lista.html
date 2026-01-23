@@ -1,0 +1,35 @@
+{% extends "painel/base.html" %}
+
+{% block header_title %}Transferências{% endblock %}
+
+{% block header_actions %}
+  {% if perms.rotas.add_transferencia %}
+    <a class="btn btn-primary" href="{% url 'painel:transferencia_nova' %}">+ Nova</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Últimas transferências</h2>
+      <span class="badge">{{ transferencias|length }}</span>
+    </div>
+
+    <ul class="list">
+      {% for t in transferencias %}
+        <li class="list-item">
+          <div>
+            <div><strong>{{ t.protocolo }}</strong> - {{ t.get_tipo_display }}</div>
+            <div class="small muted">{{ t.loja.nome }} • {{ t.loja.endereco }}</div>
+            <div class="small">Status: <span class="badge">{{ t.status }}</span></div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="{% url 'painel:transferencia_detalhe' t.id %}">Abrir</a>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-item"><span class="muted">Nenhuma transferência.</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

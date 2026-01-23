@@ -1,0 +1,23 @@
+{% extends "painel/base.html" %}
+{% block header_title %}Link de senha{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h3>Link para definir/redefinir senha</h3>
+    <p class="muted">{{ u.username }}{% if u.email %} ({{ u.email }}){% endif %}</p>
+
+    <div style="display:flex; gap:10px; align-items:center; margin-top:12px;">
+      <input id="linkSenha" class="input" style="flex:1" value="{{ link }}" readonly>
+      <button class="btn btn-primary" type="button" onclick="copyLink()">Copiar</button>
+    </div>
+  </div>
+
+  <script>
+    function copyLink(){
+      const el = document.getElementById("linkSenha");
+      el.select();
+      el.setSelectionRange(0, 999999);
+      document.execCommand("copy");
+    }
+  </script>
+{% endblock %}

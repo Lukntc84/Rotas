@@ -1,0 +1,23 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Editar usuário{% endblock %}
+{% block header_title %}Editar usuário{% endblock %}
+{% block header_sub %}Atualize os dados do usuário{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Editar: {{ u.username }}</h2>
+    </div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Salvar</button>
+        <a class="btn" href="{% url 'gestao:usuarios_lista' %}">Voltar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

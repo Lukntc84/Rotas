@@ -1,0 +1,41 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Rotas{% endblock %}
+{% block header_title %}Rotas{% endblock %}
+{% block header_sub %}Lista geral{% endblock %}
+
+{% block header_actions %}
+  {% if perms.rotas.add_rota %}
+    <a class="btn btn-primary" href="{% url 'painel:criar_rota' %}">+ Nova rota</a>
+  {% endif %}
+  <a class="btn" href="{% url 'painel:home' %}">Início</a>
+  <form method="post" action="{% url 'logout' %}" style="display:inline;">
+  {% csrf_token %}
+</form>
+
+{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Todas as rotas</h2>
+      <span class="badge">{{ rotas|length }} rota(s)</span>
+    </div>
+
+    <ul class="list">
+      {% for r in rotas %}
+        <li class="list-item">
+          <div>
+            <a class="title-link" href="{% url 'painel:rota_detalhe' r.id %}">Rota #{{ r.id }}</a>
+            <div class="small muted">Data: {{ r.data }} | Motoboy: {{ r.motoboy.username }}</div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-item"><span class="muted">Nenhuma rota cadastrada.</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

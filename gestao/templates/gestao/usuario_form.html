@@ -1,0 +1,107 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Novo usuário{% endblock %}
+{% block header_title %}Novo usuário{% endblock %}
+{% block header_sub %}Criar operador, motoboy ou acesso de loja{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Criar usuário</h2>
+      <span class="badge">Admin</span>
+    </div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="field">
+          <label class="label">Usuário (Login)</label>
+          {{ form.username }}
+          {{ form.username.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">E-mail</label>
+          {{ form.email }}
+          {{ form.email.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">Nome</label>
+          {{ form.first_name }}
+          {{ form.first_name.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">Sobrenome</label>
+          {{ form.last_name }}
+          {{ form.last_name.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">Grupo / Função</label>
+          {{ form.role }}
+          {{ form.role.errors }}
+        </div>
+
+        <div class="field" id="campo_loja" style="display: none;">
+          <label class="label" style="color: var(--primary-600); font-weight: bold;">Vincular a qual Loja?</label>
+          <select name="vincular_loja" class="input">
+              <option value="">--- Selecione uma Loja ---</option>
+              {% for loja in lojas_disponiveis %}
+                <option value="{{ loja.id }}">{{ loja.nome }}</option>
+              {% endfor %}
+          </select>
+          <small class="muted">Apenas lojas sem usuário vinculado aparecem aqui.</small>
+        </div>
+
+        <div class="field">
+          <label class="label">Ativo</label>
+          <div style="margin-top: 8px;">{{ form.is_active }}</div>
+          {{ form.is_active.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">Senha</label>
+          {{ form.password1 }}
+          {{ form.password1.errors }}
+        </div>
+
+        <div class="field">
+          <label class="label">Confirmar senha</label>
+          {{ form.password2 }}
+          {{ form.password2.errors }}
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:24px; display: flex; gap: 10px;">
+        <button class="btn btn-primary" type="submit" style="flex: 1;">Salvar Usuário</button>
+        <a class="btn" href="{% url 'gestao:usuarios_lista' %}" style="flex: 1;">Voltar</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.querySelector('select[name="role"]');
+        const campoLoja = document.getElementById('campo_loja');
+
+        function toggleLoja() {
+            // Verifica se o texto ou valor selecionado é "Loja"
+            if (roleSelect.value === 'Loja' || roleSelect.options[roleSelect.selectedIndex].text === 'Loja') {
+                campoLoja.style.display = 'block';
+            } else {
+                campoLoja.style.display = 'none';
+            }
+        }
+
+        roleSelect.addEventListener('change', toggleLoja);
+        toggleLoja(); // Executa ao carregar a página caso já venha selecionado
+    });
+  </script>
+{% endblock %}

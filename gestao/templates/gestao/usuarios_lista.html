@@ -1,0 +1,50 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Usuários{% endblock %}
+{% block header_title %}Usuários{% endblock %}
+{% block header_sub %}Gerencie operadores e motoboys{% endblock %}
+
+{% block content %}
+  <a class="btn btn-primary" href="{% url 'gestao:usuario_criar' %}">+ Novo usuário</a>
+
+  <ul class="list" style="margin-top: 16px;">
+    {% for u in usuarios %}
+      <li class="list-item">
+        <div>
+          <div><strong>{{ u.username }}</strong></div>
+          <div class="small muted">
+            Função:
+            {% if u.is_superuser %}Admin
+            {% elif u.groups.first %}{{ u.groups.first.name }}
+            {% else %}Usuário
+            {% endif %}
+            {% if u.email %} | {{ u.email }}{% endif %}
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="btn" href="{% url 'gestao:usuario_editar' u.id %}">Editar</a>
+          <a class="btn" href="{% url 'gestao:usuario_trocar_grupo' u.id %}">Grupo</a>
+          <a class="btn" href="{% url 'gestao:usuario_definir_senha' u.id %}">Senha</a>
+
+          <form method="post" action="{% url 'gestao:usuario_enviar_link_senha' u.id %}" class="inline">
+            {% csrf_token %}
+            <button class="btn" type="submit">Enviar link</button>
+            <a class="btn" href="{% url 'gestao:usuario_link_senha' u.id %}">Copiar link</a>
+          </form>
+
+          <form method="post" action="{% url 'gestao:usuario_toggle_ativo' u.id %}" class="inline">
+            {% csrf_token %}
+            {% if u.is_active %}
+              <button class="btn btn-danger" type="submit">Desativar</button>
+            {% else %}
+              <button class="btn btn-primary" type="submit">Ativar</button>
+            {% endif %}
+          </form>
+        </div>
+      </li>
+    {% empty %}
+      <li class="list-item"><span class="muted">Sem usuários.</span></li>
+    {% endfor %}
+  </ul>
+{% endblock %}

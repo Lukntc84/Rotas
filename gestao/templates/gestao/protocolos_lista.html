@@ -1,0 +1,40 @@
+{% extends "painel/base.html" %}
+
+{% block header_title %}Protocolos{% endblock %}
+{% block header_sub %}Entrada e saída por loja{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">
+    <h2>Protocolos</h2>
+    <div class="actions">
+      <a class="btn btn-primary" href="{% url 'gestao:protocolo_novo' %}">+ Novo protocolo</a>
+    </div>
+  </div>
+
+  <ul class="list">
+    {% for p in protocolos %}
+      <li class="list-item">
+        <div>
+          <strong>{{ p.loja.nome }}</strong>
+          <div class="small muted">
+            {{ p.get_tipo_display }} | {{ p.get_status_display }} | {{ p.criado_em|date:"d/m/Y H:i" }}
+            {% if p.observacao %}<br>{{ p.observacao }}{% endif %}
+            {% if p.status == "confirmado" %}
+              <br><b>Confirmado por:</b> {{ p.confirmado_nome }} ({{ p.confirmado_em|date:"d/m/Y H:i" }})
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="actions">
+          {% if p.status == "pendente" %}
+            <a class="btn" href="{% url 'gestao:protocolo_confirmar' p.id %}">Confirmar</a>
+          {% endif %}
+        </div>
+      </li>
+    {% empty %}
+      <li class="list-item"><span class="muted">Sem protocolos.</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

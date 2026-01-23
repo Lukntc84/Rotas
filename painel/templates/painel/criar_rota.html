@@ -1,0 +1,77 @@
+{% extends "painel/base.html" %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<div class="card">
+  <div class="card-title">
+    <h2>Criar Nova Rota</h2>
+    <span class="muted small">{{ hoje|date:"d/m/Y" }}</span>
+  </div>
+
+  <div class="form">
+    <form method="post">
+      {% csrf_token %}
+      
+      <div class="form-row">
+        <label class="label">Quem é o Motoboy?</label>
+        {{ form.motoboy }}
+      </div>
+
+      <div class="form-row" style="margin-top: 15px;">
+        <label class="label">Selecione as Lojas (Digite para buscar)</label>
+        <div class="select2-box-wrapper">
+            {{ form.lojas }}
+        </div>
+        <small class="muted">Você pode selecionar várias lojas. Elas aparecerão como etiquetas acima.</small>
+      </div>
+
+      <div style="margin-top: 25px;">
+        <button type="submit" class="btn btn-primary btn-block">Confirmar e Gerar Rota</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('.select2-multiple').select2({
+        placeholder: "🔍 Comece a digitar o nome da loja...",
+        allowClear: true,
+        language: {
+            noResults: function() { return "Nenhuma loja encontrada"; }
+        }
+    });
+});
+</script>
+
+<style>
+/* Ajuste para o Select2 não ficar "colado" e combinar com seu tema */
+.select2-container--default .select2-selection--multiple {
+    border: 1px solid rgba(15,23,42,.10) !important;
+    border-radius: 10px !important;
+    padding: 6px !important;
+    min-height: 48px !important;
+    background-color: #ffffff !important;
+}
+
+/* Estilo das etiquetas das lojas selecionadas */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: var(--primary) !important;
+    border: none !important;
+    color: white !important;
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: white !important;
+    margin-right: 5px !important;
+}
+</style>
+{% endblock %}

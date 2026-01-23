@@ -1,0 +1,97 @@
+{% extends 'painel/base.html' %}
+
+{% block header_title %}
+  Protocolo: #{{ t.id }}
+{% endblock %}
+
+{% block header_sub %}
+  {{ t.get_tipo_display }}
+{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Detalhes do Pedido</h2>
+      <span class="badge {% if t.status == 'confirmada' %}
+          badge-success
+        {% else %}
+          badge-warning
+        {% endif %}">
+        {{ t.status|upper }}
+      </span>
+    </div>
+
+    <div class="form">
+      <div class="row" style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px;">
+          <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">Logística</h4>
+          <div>
+            <strong>Loja Origem:</strong> {{ t.loja_origem.nome|default:'—' }}
+          </div>
+          <div>
+            <strong>Loja Destino:</strong> {{ t.loja_destino.nome|default:'—' }}
+          </div>
+
+          <br />
+          <div>
+            <strong>Motorista:</strong> {{ t.motorista.username|default:'—' }}
+          </div>
+
+          <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+            <form method="post">
+              {% csrf_token %}
+              <label><strong>Retirado por:</strong></label>
+              {% if t.status != 'confirmada' %}
+                <div style="display: flex; gap: 5px;">
+                  <input type="text" name="retirado_por" value="{{ t.retirado_por|default:'' }}" class="form-control" style="height: 30px;" />
+                  <button type="submit" name="atualizar_retirado" class="btn btn-sm" style="background: #6c757d; color: white;">Salvar</button>
+                </div>
+              {% else %}
+                <span>{{ t.retirado_por|default:'—' }}</span>
+              {% endif %}
+            </form>
+          </div>
+
+          <div>
+            <strong>Nº Documento/NF:</strong> {{ t.numero_documento|default:'—' }}
+          </div>
+        </div>
+
+        <div style="flex: 1; min-width: 250px;">
+          <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">Informações do Produto</h4>
+          <div>
+            <strong>Produto:</strong> {{ t.nome_produto|default:'—' }}
+          </div>
+          <div>
+            <strong>Marca:</strong> {{ t.marca|default:'—' }}
+          </div>
+          <div>
+            <strong>Quantidade:</strong> {{ t.quantidade }} {{ t.unidade_medida }}
+          </div>
+          <div>
+            <strong>Data:</strong> {{ t.data|date:'d/m/Y' }}
+          </div>
+        </div>
+      </div>
+
+      {% if t.status != 'confirmada' %}
+        <form method="post" action="{% url 'painel:transferencia_confirmar' t.id %}" style="margin-top: 25px;">
+          {% csrf_token %}
+          <button class="btn btn-primary" type="submit" style="width: 100%;">Finalizar e Confirmar Transferência</button>
+        </form>
+      {% endif %}
+      {% if user.is_superuser %}
+        <hr style="border-top: 1px dashed #f00; margin: 30px 0 10px 0;" />
+        <div style="background: #fff5f5; padding: 15px; border: 1px solid #feb2b2; border-radius: 8px;">
+          <h4 style="color: #c53030; margin-top: 0;">Zona de Perigo (Admin)</h4>
+          <p class="small muted">A exclusão de uma transferência é permanente e não pode ser desfeita.</p>
+
+          <form method="post" action="{% url 'painel:transferencia_excluir' t.id %}" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta transferência?');">
+            {% csrf_token %}
+            <button type="submit" class="btn" style="background: #c53030; color: white; width: 100%;">Excluir Transferência Permanentemente</button>
+          </form>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

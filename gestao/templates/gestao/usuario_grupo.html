@@ -1,0 +1,24 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Grupo{% endblock %}
+{% block header_title %}Grupo{% endblock %}
+{% block header_sub %}Usuário: {{ u.username }}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title"><h2>Alterar função</h2></div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+      <div class="form-row">
+        <label class="label">Função</label>
+        {{ form.role }}
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Salvar</button>
+        <a class="btn" href="{% url 'gestao:usuarios_lista' %}">Voltar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

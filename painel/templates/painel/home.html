@@ -1,0 +1,156 @@
+{% extends "painel/base.html" %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="card">
+  <div class="card-title">
+    <h2>Filtro de datas</h2>
+  </div>
+
+<form method="get" class="form" id="filtro-form">
+  <div class="form-row">
+    <label class="label">Modo</label>
+    <select class="input" name="mode" id="mode">
+      <option value="day"   {% if mode == "day" %}selected{% endif %}>Um dia</option>
+      <option value="range" {% if mode == "range" %}selected{% endif %}>Intervalo</option>
+      <option value="multi" {% if mode == "multi" %}selected{% endif %}>Vários dias</option>
+      <option value="all"   {% if mode == "all" %}selected{% endif %}>Todos</option>
+    </select>
+  </div>
+
+  <!-- UM DIA -->
+  <div class="form-row js-mode js-day">
+    <label class="label">Dia</label>
+    <input class="input" type="date" name="day" value="{{ request.GET.day|default:'' }}">
+  </div>
+
+  <!-- INTERVALO -->
+  <div class="form-row js-mode js-range">
+    <label class="label">Início</label>
+    <input class="input" type="date" name="start" value="{{ request.GET.start|default:'' }}">
+  </div>
+  <div class="form-row js-mode js-range">
+    <label class="label">Fim</label>
+    <input class="input" type="date" name="end" value="{{ request.GET.end|default:'' }}">
+  </div>
+
+  <!-- VÁRIOS DIAS (CSV) -->
+  <div class="form-row js-mode js-multi">
+    <label class="label">Dias (YYYY-MM-DD separados por vírgula)</label>
+    <input class="input" type="text" name="days" placeholder="2026-01-15, 2026-01-16" value="{{ request.GET.days|default:'' }}">
+  </div>
+
+  <button class="btn btn-primary" type="submit">Aplicar</button>
+  <a class="btn" href="?mode=day&day={{ hoje|date:'Y-m-d' }}">Hoje</a>
+</form>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-ico">🗺️</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Rotas</div>
+      <div class="kpi-value">{{ kpi.total_rotas }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-ico">📍</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Paradas</div>
+      <div class="kpi-value">{{ kpi.total_paradas }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-green">
+    <div class="kpi-ico">✅</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Coletadas</div>
+      <div class="kpi-value">{{ kpi.coletadas }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-orange">
+    <div class="kpi-ico">⏳</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Pendentes</div>
+      <div class="kpi-value">{{ kpi.pendentes }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-ico">📈</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">% Concluído</div>
+      <div class="kpi-value">{{ kpi.progresso }}%</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-purple">
+    <div class="kpi-ico">⚠️</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Rotas sem lojas</div>
+      <div class="kpi-value">{{ kpi.rotas_sem_lojas }}</div>
+    </div>
+  </div>
+</div>
+
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">
+      <h2>Rotas</h2>
+    </div>
+    <ul class="list">
+      {% for r in rotas %}
+        <li class="list-item">
+          <div>
+            <div class="title-link">Rota #{{ r.id }} - {{ r.data }}</div>
+            <div class="small muted">Motoboy: {{ r.motoboy.username }}</div>
+            <div class="small">Progresso: {{ r.lojas_coletadas }}/{{ r.total_lojas }}</div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-item"><span class="muted">Sem rotas no período.</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <h2>Por motoboy</h2>
+    </div>
+    <ul class="list">
+      {% for m in por_motoboy %}
+        <li class="list-item">
+          <div>
+            <div><strong>{{ m.motoboy__username }}</strong></div>
+            <div class="small muted">Rotas: {{ m.rotas }} | Paradas: {{ m.paradas }} | Coletadas: {{ m.coletadas }}</div>
+          </div>
+        </li>
+      {% empty %}
+        <li class="list-item"><span class="muted">Sem dados no período.</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const mode = document.getElementById("mode");
+    const blocks = document.querySelectorAll(".js-mode");
+
+    function applyMode(){
+      blocks.forEach(b => b.style.display = "none");
+      document.querySelectorAll(".js-" + mode.value).forEach(b => b.style.display = "block");
+    }
+    mode.addEventListener("change", applyMode);
+    applyMode();
+  })();
+</script>
+
+{% endblock %}

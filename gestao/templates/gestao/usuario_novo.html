@@ -1,0 +1,70 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Novo usuário{% endblock %}
+{% block header_title %}Novo usuário{% endblock %}
+{% block header_sub %}Criar operador ou motoboy{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <div class="card">
+      <div class="card-title">
+        <h2>Criar usuário</h2>
+        <span class="badge">Admin</span>
+      </div>
+
+      <form method="post" class="form">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-error">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="grid-2">
+          <div class="form-row">
+            <label class="label">Usuário</label>
+            {{ form.username }}
+            {% if form.username.errors %}<div class="small" style="color:#b42318">{{ form.username.errors }}</div>{% endif %}
+          </div>
+
+          <div class="form-row">
+            <label class="label">E-mail</label>
+            {{ form.email }}
+            {% if form.email.errors %}<div class="small" style="color:#b42318">{{ form.email.errors }}</div>{% endif %}
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-row">
+            <label class="label">Nome</label>
+            {{ form.first_name }}
+          </div>
+
+          <div class="form-row">
+            <label class="label">Sobrenome</label>
+            {{ form.last_name }}
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-row">
+            <label class="label">Grupo (Operador/Motoboy)</label>
+            {{ form.group }}
+            {% if form.group.errors %}<div class="small" style="color:#b42318">{{ form.group.errors }}</div>{% endif %}
+          </div>
+
+          <div class="form-row">
+            <label class="label">Ativo</label>
+            {{ form.is_active }}
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Salvar</button>
+          <a class="btn" href="{% url 'gestao:usuarios_lista' %}">Voltar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

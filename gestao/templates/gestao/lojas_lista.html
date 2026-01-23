@@ -1,0 +1,52 @@
+{% extends 'painel/base.html' %}
+
+{% block content %}
+  <div class="card-title">
+    <h2>Lista de lojas</h2>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="{% url 'gestao:loja_nova' %}">+ Nova loja</a>
+    </div>
+  </div>
+
+  <ul class="list">
+    {% for loja in lojas %}
+      <li class="list-item">
+        <div>
+          <div>
+            <strong>{{ loja.nome }}</strong>
+          </div>
+
+          <div class="small muted">
+            {% if loja.endereco %}
+              {{ loja.endereco }}
+            {% elif loja.logradouro %}
+              {{ loja.logradouro }}{% if loja.numero %}
+                , {{ loja.numero }}
+              {% endif %}
+            {% else %}
+              <span class="muted">Endereço não informado</span>
+            {% endif %}
+          </div>
+
+          {% if loja.lat and loja.lng %}
+            <div class="small">
+              <span class="badge">OK</span> {{ loja.lat }}, {{ loja.lng }}
+            </div>
+          {% else %}
+            <div class="small">
+              <span class="badge">Sem coordenadas</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="actions">
+          <a class="btn" href="{% url 'gestao:loja_editar' loja.id %}">Editar</a>
+        </div>
+      </li>
+    {% empty %}
+      <li class="list-item">
+        <span class="muted">Sem lojas cadastradas.</span>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock %}

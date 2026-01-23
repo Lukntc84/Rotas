@@ -1,0 +1,452 @@
+from datetime import date
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.db.models import Count, Prefetch, Q
+from django.http import HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.http import HttpResponseForbidden
+from django.contrib import messages
+
+from rotas.models import Rota, Parada,Transferencia
+from .forms import AdicionarLojaRotaForm, CriarRotaForm, TransferenciaForm
+
+import json
+from django.db import transaction
+from django.http import JsonResponse, HttpResponseForbidden
+from django.views.decorators.http import require_POST
+
+
+def _is_motoboy(user):
+    return user.groups.filter(name="Motoboy").exists()
+
+
+def _parse_date(s: str):
+    # s no formato YYYY-MM-DD
+    try:
+        y, m, d = map(int, s.split("-"))
+        return date(y, m, d)
+    except Exception:
+        return None
+
+
+def _get_date_filter(request):
+    mode = request.GET.get("mode", "day")
+    hoje = timezone.localdate()
+
+    if mode == "all":
+        return mode, None  # sem filtro
+
+    if mode == "range":
+        start = _parse_date(request.GET.get("start", ""))
+        end = _parse_date(request.GET.get("end", ""))
+        if not start or not end:
+            return "day", [hoje]
+
+        if end < start:
+            start, end = end, start
+
+        return "range", (start, end)
+
+
+    if mode == "multi":
+        raw = request.GET.get("days", "")
+        days = [d for d in (_parse_date(x.strip()) for x in raw.split(",")) if d]
+        if not days:
+            return "day", [hoje]
+        return "multi", sorted(set(days))
+
+    # default: day
+    day = _parse_date(request.GET.get("day", "")) or hoje
+    return "day", [day]
+
+
+# =========================
+# DASHBOARD (HOME)
+# =========================
+@login_required
+def home(request):
+    mode, filt = _get_date_filter(request)
+
+    rotas_qs = Rota.objects.select_related("motoboy")
+    paradas_qs = Parada.objects.select_related("rota", "loja", "rota__motoboy")
+
+    # ✅ Motoboy vê só as rotas dele (no dashboard também)
+    if _is_motoboy(request.user):
+        rotas_qs = rotas_qs.filter(motoboy=request.user)
+        paradas_qs = paradas_qs.filter(rota__motoboy=request.user)
+
+    # filtro por data
+    if mode == "all":
+        pass
+    elif mode == "range":
+        start, end = filt
+        rotas_qs = rotas_qs.filter(data__range=(start, end))
+        paradas_qs = paradas_qs.filter(rota__data__range=(start, end))
+    else:
+        rotas_qs = rotas_qs.filter(data__in=filt)
+        paradas_qs = paradas_qs.filter(rota__data__in=filt)
+
+    total_rotas = rotas_qs.count()
+    total_paradas = paradas_qs.count()
+    coletadas = paradas_qs.filter(status="coletado").count()
+    pendentes = total_paradas - coletadas
+    progresso = int((coletadas / total_paradas) * 100) if total_paradas else 0
+
+    rotas = (
+        rotas_qs
+        .annotate(
+            total_lojas=Count("paradas", distinct=True),
+            lojas_coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
+        )
+        .order_by("data", "id")
+    )
+
+    por_motoboy = (
+        rotas_qs
+        .values("motoboy__username")
+        .annotate(
+            rotas=Count("id", distinct=True),
+            total_paradas=Count("paradas", distinct=True),
+            coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
+        )
+        .order_by("motoboy__username")
+    )
+
+
+    rotas_sem_lojas = rotas_qs.annotate(qtd=Count("paradas")).filter(qtd=0).count()
+
+    context = {
+        "mode": mode,
+        "filt": filt,
+        "kpi": {
+            "total_rotas": total_rotas,
+            "total_paradas": total_paradas,
+            "coletadas": coletadas,
+            "pendentes": pendentes,
+            "progresso": progresso,
+            "rotas_sem_lojas": rotas_sem_lojas,
+        },
+        "rotas": rotas,
+        "por_motoboy": por_motoboy,
+        "hoje": timezone.localdate(),
+    }
+    return render(request, "painel/home.html", context)
+
+
+# =========================
+# ROTAS DE HOJE
+# =========================
+@login_required
+@permission_required("rotas.view_rota", raise_exception=True)
+def rotas_hoje(request):
+    hoje = timezone.localdate()
+
+    rotas = (
+        Rota.objects.filter(data=hoje)
+        .select_related("motoboy")
+        .prefetch_related(
+            Prefetch(
+                "paradas",
+                queryset=Parada.objects.select_related("loja").order_by("ordem"),
+            )
+        )
+    )
+
+    # ✅ Motoboy vê só as rotas dele
+    if _is_motoboy(request.user):
+        rotas = rotas.filter(motoboy=request.user)
+
+    return render(request, "painel/rotas_hoje.html", {"rotas": rotas, "hoje": hoje})
+
+
+@login_required
+@permission_required("rotas.view_rota", raise_exception=True)
+def rota_detalhe(request, rota_id):
+    rota = get_object_or_404(Rota.objects.select_related("motoboy"), id=rota_id)
+
+    # ✅ Se for motoboy, só pode abrir a própria rota
+    if _is_motoboy(request.user) and rota.motoboy_id != request.user.id:
+        return HttpResponseForbidden("Você não pode acessar esta rota.")
+
+    paradas = rota.paradas.select_related("loja").order_by("ordem")
+    return render(request, "painel/rota_detalhe.html", {"rota": rota, "paradas": paradas})
+
+
+@login_required
+@permission_required("rotas.add_parada", raise_exception=True)  # operador/admin
+def adicionar_loja_rota(request, rota_id):
+    rota = get_object_or_404(Rota, id=rota_id)
+
+    if request.method == "POST":
+        form = AdicionarLojaRotaForm(request.POST)
+        if form.is_valid():
+            loja = form.cleaned_data["loja"]
+
+            ultima = rota.paradas.order_by("-ordem").first()
+            proxima_ordem = (ultima.ordem + 1) if ultima else 1
+
+            Parada.objects.create(
+                rota=rota,
+                loja=loja,
+                ordem=proxima_ordem,
+                status="pendente",
+            )
+
+            return redirect("painel:rota_detalhe", rota_id=rota.id)
+    else:
+        form = AdicionarLojaRotaForm()
+
+    return render(request, "painel/adicionar_loja.html", {"rota": rota, "form": form})
+
+
+# =========================
+# MARCAR COLETADO
+# =========================
+@login_required
+def marcar_coletado(request, parada_id):
+    parada = get_object_or_404(Parada.objects.select_related("rota"), id=parada_id)
+
+    # aceitar só POST para alterar estado
+    if request.method != "POST":
+        return HttpResponseForbidden("Use POST para marcar como coletado.")
+
+    # permissão
+    if request.user.has_perm("rotas.change_parada"):
+        pode = True
+    elif _is_motoboy(request.user) and parada.rota.motoboy_id == request.user.id:
+        pode = True
+    else:
+        pode = False
+
+    if not pode:
+        return HttpResponseForbidden("Sem permissão para marcar esta coleta.")
+
+    parada.status = "coletado"
+    # ⚠️ Só funciona se você tiver esse campo no model Parada
+    parada.collected_at = timezone.now()
+    parada.save(update_fields=["status", "collected_at"])
+
+    return redirect("painel:rota_detalhe", rota_id=parada.rota_id)
+
+
+# =========================
+# CRIAR ROTA
+# =========================
+# Certifique-se de que 'transaction' está importado no topo do arquivo:
+# from django.db import transaction
+
+@login_required
+@permission_required("rotas.add_rota", raise_exception=True)
+def criar_rota(request):
+    hoje = timezone.localdate()
+
+    if request.method == "POST":
+        form = CriarRotaForm(request.POST)
+        if form.is_valid():
+            motoboy = form.cleaned_data["motoboy"]
+            lojas_selecionadas = form.cleaned_data["lojas"]
+
+            # Usa transação para garantir que cria tudo ou nada (evita rota vazia se der erro)
+            with transaction.atomic():
+                # 1. Cria a Rota
+                rota = Rota.objects.create(
+                    data=hoje,
+                    motoboy=motoboy,
+                    status="aberta" # Correção do erro de atributo 'Status'
+                )
+
+                # 2. Cria as Paradas Automaticamente
+                for index, loja in enumerate(lojas_selecionadas, start=1):
+                    Parada.objects.create(
+                        rota=rota,
+                        loja=loja,
+                        ordem=index,
+                        status="pendente"
+                    )
+
+            messages.success(request, f"Rota criada com {len(lojas_selecionadas)} paradas!")
+            return redirect("painel:rota_detalhe", rota_id=rota.id)
+    else:
+        form = CriarRotaForm()
+
+    return render(request, "painel/criar_rota.html", {"form": form, "hoje": hoje})
+
+@login_required
+@require_POST
+def rota_reordenar(request, rota_id):
+    rota = get_object_or_404(Rota, id=rota_id)
+
+    # operador/admin podem reordenar
+    if not request.user.has_perm("rotas.change_parada") and not request.user.has_perm("rotas.change_rota"):
+        return HttpResponseForbidden("Sem permissão.")
+
+    data = json.loads(request.body.decode("utf-8"))
+    ids = data.get("ids", [])
+
+    # garante que só reordena paradas dessa rota
+    paradas = list(Parada.objects.filter(rota_id=rota_id, id__in=ids))
+    if len(paradas) != len(ids):
+        return JsonResponse({"ok": False, "error": "Lista inválida."}, status=400)
+
+    with transaction.atomic():
+        for ordem, parada_id in enumerate(ids, start=1):
+            Parada.objects.filter(id=parada_id, rota_id=rota_id).update(ordem=ordem)
+
+    return JsonResponse({"ok": True})
+
+@login_required
+@permission_required("rotas.change_parada", raise_exception=True)  # operador/admin
+def reordenar_paradas(request, rota_id):
+    if request.method != "POST":
+        return HttpResponseForbidden("Use POST.")
+
+    rota = get_object_or_404(Rota, id=rota_id)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+        ids = payload.get("ids", [])
+        if not isinstance(ids, list) or not ids:
+            return JsonResponse({"ok": False, "error": "Lista inválida."}, status=400)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "JSON inválido."}, status=400)
+
+    # garante que todas as paradas pertencem à rota
+    qs = Parada.objects.filter(rota_id=rota.id, id__in=ids)
+    if qs.count() != len(ids):
+        return JsonResponse({"ok": False, "error": "IDs não pertencem à rota."}, status=400)
+
+    # atualiza ordem (1..n)
+    paradas_map = {p.id: p for p in qs}
+    for i, pid in enumerate(ids, start=1):
+        paradas_map[pid].ordem = i
+
+    with transaction.atomic():
+        Parada.objects.bulk_update(paradas_map.values(), ["ordem"])
+
+    return JsonResponse({"ok": True})
+
+def _is_motoboy(user):
+    return user.groups.filter(name="Motoboy").exists()
+
+@login_required
+@permission_required("rotas.view_transferencia", raise_exception=True)
+def transferencias_lista(request):
+    qs = Transferencia.objects.select_related("loja", "motorista", "criado_por").order_by("-criado_em")
+    loja_logada = _get_loja_usuario(request.user)
+    
+    if loja_logada:
+        # A loja vê o que sai dela OU o que vai para ela
+        transferencias = Transferencia.objects.filter(
+            Q(loja_origem=loja_logada) | Q(loja_destino=loja_logada)
+        ).order_by('-id')
+    else:
+        # Admin ou Motoboy vê o comportamento padrão
+        transferencias = Transferencia.objects.all().order_by('-id')
+        
+    return render(request, "painel/transferencias_lista.html", {"transferencias": transferencias})
+
+@login_required
+@permission_required("rotas.add_transferencia", raise_exception=True)
+def transferencia_nova(request):
+    if request.method == "POST":
+        form = TransferenciaForm(request.POST)
+        if form.is_valid():
+            t = form.save(commit=False)
+            t.criado_por = request.user
+            t.status = "pendente"  # ✅ Ajustado para string direta
+            t.save()
+            # ✅ Ajustado para usar o ID ou numero_documento
+            messages.success(request, f"Transferência criada com sucesso!") 
+            return redirect("painel:transferencias_lista")
+    else:
+        form = TransferenciaForm()
+
+    return render(request, "painel/transferencia_form.html", {"form": form})
+
+@login_required
+@permission_required("rotas.view_transferencia", raise_exception=True)
+def transferencia_detalhe(request, transferencia_id):
+    t = get_object_or_404(
+        Transferencia.objects.select_related("loja", "motorista", "criado_por", "confirmado_por"),
+        id=transferencia_id,
+    )
+
+    # ✅ Lógica para editar 'retirado_por' antes de confirmar
+    if request.method == "POST" and "atualizar_retirado" in request.POST:
+        if t.status != "confirmada":
+            t.retirado_por = request.POST.get("retirado_por")
+            t.save(update_fields=["retirado_por"])
+            messages.success(request, "Responsável pela retirada atualizado!")
+            return redirect("painel:transferencia_detalhe", transferencia_id=t.id)
+
+    return render(request, "painel/transferencia_detalhe.html", {"t": t})
+
+@login_required
+def transferencia_confirmar(request, transferencia_id):
+    t = get_object_or_404(Transferencia, id=transferencia_id)
+
+    # regra de permissão existente
+    pode = request.user.has_perm("rotas.change_transferencia") or \
+           (_is_motoboy(request.user) and t.motorista_id == request.user.id)
+
+    if not pode:
+        return HttpResponseForbidden("Sem permissão para confirmar.")
+
+    if request.method != "POST":
+        return HttpResponseForbidden("Use POST.")
+
+    if t.status != "confirmada": # ✅ Ajustado para string direta
+        t.status = "confirmada"
+        t.confirmado_em = timezone.now()
+        t.confirmado_por = request.user
+        t.save(update_fields=["status", "confirmado_em", "confirmado_por"])
+
+    return redirect("painel:transferencia_detalhe", transferencia_id=t.id)
+
+from django.contrib.auth.decorators import user_passes_test
+
+
+@user_passes_test(lambda u: u.is_superuser)
+@login_required
+def transferencia_excluir(request, transferencia_id):
+    # ✅ Apenas Admin (superuser) pode excluir
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Apenas administradores podem excluir transferências.")
+    
+    t = get_object_or_404(Transferencia, id=transferencia_id)
+    if request.method == "POST":
+        t.delete()
+        messages.success(request, "Transferência excluída permanentemente.")
+        return redirect("painel:transferencias_lista")
+    
+    return HttpResponseForbidden("Método inválido.")
+
+def _is_loja(user):
+    return user.groups.filter(name="Loja").exists() or hasattr(user, 'loja_perfil')
+
+@login_required
+def paradas_loja(request):
+    if not _is_loja(request.user):
+        return HttpResponseForbidden("Apenas lojas acessam esta página.")
+        
+    minha_loja = request.user.loja_perfil
+    # Pega todas as paradas daquela loja específica
+    paradas = Parada.objects.filter(loja=minha_loja).select_related('rota').order_by('-rota__data')
+    
+    return render(request, "painel/minhas_paradas.html", {"paradas": paradas})
+
+def _get_loja_usuario(user):
+    # Retorna o objeto Loja se o usuário estiver vinculado a uma, senão None
+    return getattr(user, 'loja_perfil', None)
+
+@login_required
+def minhas_paradas(request):
+    loja_logada = _get_loja_usuario(request.user)
+    if not loja_logada:
+        return HttpResponseForbidden("Apenas lojas acessam esta página.")
+        
+    # Busca apenas as paradas desta loja em qualquer rota
+    paradas = Parada.objects.filter(loja=loja_logada).select_related('rota').order_by('-rota__data')
+    
+    return render(request, "painel/minhas_paradas.html", {"paradas": paradas})

@@ -1,0 +1,23 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Adicionar loja{% endblock %}
+{% block header_title %}Adicionar loja{% endblock %}
+{% block header_sub %}Rota #{{ rota.id }}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Adicionar loja na rota</h2>
+      <span class="badge">Rota {{ rota.id }}</span>
+    </div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Adicionar</button>
+        <a class="btn" href="{% url 'painel:rota_detalhe' rota.id %}">Voltar</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

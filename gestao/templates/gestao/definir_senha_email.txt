@@ -1,0 +1,8 @@
+Olá!
+
+Seu acesso ao Sistema de Rotas foi criado.
+Clique no link abaixo para definir sua senha:
+
+{{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
+
+Se você não solicitou este acesso, ignore este e-mail.

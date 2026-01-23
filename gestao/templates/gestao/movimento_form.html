@@ -1,0 +1,81 @@
+{% extends "painel/base.html" %}
+{% block header_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">
+    <h2>{{ titulo }}</h2>
+  </div>
+
+  <form method="post" class="form">
+    {% csrf_token %}
+
+    <div class="grid-2">
+      <div class="form-row">
+        <div class="label">{{ form.produto_nome.label }}</div>
+        {{ form.produto_nome }}
+        {% for e in form.produto_nome.errors %}<div class="muted">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.marca.label }} *</div>
+        {{ form.marca }}
+        {% for e in form.marca.errors %}<div class="muted">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.quantidade.label }} *</div>
+        {{ form.quantidade }}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.unidade_medida.label }} *</div>
+        {{ form.unidade_medida }}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.loja_origem.label }}</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <div style="flex:1;">{{ form.loja_origem }}</div>
+          <a class="btn" href="{% url 'gestao:loja_nova' %}" title="Cadastrar loja">+</a>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.fornecedor.label }}</div>
+        {{ form.fornecedor }}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.responsavel.label }}</div>
+        {{ form.responsavel }}
+      </div>
+
+      <div class="form-row">
+        <div class="label">{{ form.data.label }} *</div>
+        {{ form.data }}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="label">{{ form.numero_documento.label }}</div>
+      {{ form.numero_documento }}
+    </div>
+
+    <div class="form-row">
+      <div class="label">{{ form.observacoes.label }}</div>
+      {{ form.observacoes }}
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+      <a class="btn" href="javascript:history.back()">Cancelar</a>
+      <button class="btn btn-primary" type="submit">Gerar Protocolo</button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .grid-2{ display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px){ .grid-2{ grid-template-columns: 1fr; } }
+</style>
+{% endblock %}

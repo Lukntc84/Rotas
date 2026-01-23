@@ -1,0 +1,30 @@
+{% extends "painel/base.html" %}
+
+{% block title %}Senha{% endblock %}
+{% block header_title %}Senha do usuário{% endblock %}
+{% block header_sub %}Definir nova senha para {{ u.username }}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div class="card-title">
+      <h2>Definir senha</h2>
+    </div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">Salvar senha</button>
+        <a class="btn" href="{% url 'gestao:usuarios_lista' %}">Voltar</a>
+      </div>
+    </form>
+
+    <hr style="margin:16px 0; opacity:.2;">
+
+    <form method="post" action="{% url 'gestao:usuario_enviar_link_senha' u.id %}">
+      {% csrf_token %}
+      <button class="btn" type="submit">Enviar link de redefinição por e-mail</button>
+    </form>
+  </div>
+{% endblock %}

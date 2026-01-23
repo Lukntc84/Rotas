@@ -1,0 +1,18 @@
+{% extends 'painel/base.html' %}
+
+{% block content %}
+<h2>
+  {% if loja %}Editar loja{% else %}Nova loja{% endif %}
+</h2>
+
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+
+  <button class="btn btn-primary" type="submit">
+    {% if loja %}Salvar alterações{% else %}Cadastrar{% endif %}
+  </button>
+
+  <a class="btn" href="{% url 'gestao:lojas_lista' %}">Voltar</a>
+</form>
+{% endblock %}
