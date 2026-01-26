@@ -8,44 +8,42 @@
     <h2>Filtro de datas</h2>
   </div>
 
-<form method="get" class="form" id="filtro-form">
-  <div class="form-row">
-    <label class="label">Modo</label>
-    <select class="input" name="mode" id="mode">
-      <option value="day"   {% if mode == "day" %}selected{% endif %}>Um dia</option>
-      <option value="range" {% if mode == "range" %}selected{% endif %}>Intervalo</option>
-      <option value="multi" {% if mode == "multi" %}selected{% endif %}>Vários dias</option>
-      <option value="all"   {% if mode == "all" %}selected{% endif %}>Todos</option>
-    </select>
-  </div>
+  <form method="get" class="form" id="filtro-form">
+    <div class="form-row">
+      <label class="label">Modo</label>
+      <select class="input" name="mode" id="mode">
+        <option value="day"   {% if mode == "day" %}selected{% endif %}>Um dia</option>
+        <option value="range" {% if mode == "range" %}selected{% endif %}>Intervalo</option>
+        <option value="multi" {% if mode == "multi" %}selected{% endif %}>Vários dias</option>
+        <option value="all"   {% if mode == "all" %}selected{% endif %}>Todos</option>
+      </select>
+    </div>
 
-  <!-- UM DIA -->
-  <div class="form-row js-mode js-day">
-    <label class="label">Dia</label>
-    <input class="input" type="date" name="day" value="{{ request.GET.day|default:'' }}">
-  </div>
+    <div class="form-row js-mode js-day">
+      <label class="label">Dia</label>
+      <input class="input" type="date" name="day" value="{{ request.GET.day|default:'' }}">
+    </div>
 
-  <!-- INTERVALO -->
-  <div class="form-row js-mode js-range">
-    <label class="label">Início</label>
-    <input class="input" type="date" name="start" value="{{ request.GET.start|default:'' }}">
-  </div>
-  <div class="form-row js-mode js-range">
-    <label class="label">Fim</label>
-    <input class="input" type="date" name="end" value="{{ request.GET.end|default:'' }}">
-  </div>
+    <div class="form-row js-mode js-range">
+      <label class="label">Início</label>
+      <input class="input" type="date" name="start" value="{{ request.GET.start|default:'' }}">
+    </div>
+    <div class="form-row js-mode js-range">
+      <label class="label">Fim</label>
+      <input class="input" type="date" name="end" value="{{ request.GET.end|default:'' }}">
+    </div>
 
-  <!-- VÁRIOS DIAS (CSV) -->
-  <div class="form-row js-mode js-multi">
-    <label class="label">Dias (YYYY-MM-DD separados por vírgula)</label>
-    <input class="input" type="text" name="days" placeholder="2026-01-15, 2026-01-16" value="{{ request.GET.days|default:'' }}">
-  </div>
+    <div class="form-row js-mode js-multi">
+      <label class="label">Dias (YYYY-MM-DD separados por vírgula)</label>
+      <input class="input" type="text" name="days" placeholder="2026-01-15, 2026-01-16" value="{{ request.GET.days|default:'' }}">
+    </div>
 
-  <button class="btn btn-primary" type="submit">Aplicar</button>
-  <a class="btn" href="?mode=day&day={{ hoje|date:'Y-m-d' }}">Hoje</a>
-</form>
+    <button class="btn btn-primary" type="submit">Aplicar</button>
+    <a class="btn" href="?mode=day&day={{ hoje|date:'Y-m-d' }}">Hoje</a>
+  </form>
 </div>
 
+<h3 style="margin: 20px 0 10px 0; color: #666;">📊 Logística de Rotas</h3>
 <div class="kpi-grid">
   <div class="kpi-card">
     <div class="kpi-ico">🗺️</div>
@@ -71,14 +69,6 @@
     </div>
   </div>
 
-  <div class="kpi-card kpi-orange">
-    <div class="kpi-ico">⏳</div>
-    <div class="kpi-meta">
-      <div class="kpi-label">Pendentes</div>
-      <div class="kpi-value">{{ kpi.pendentes }}</div>
-    </div>
-  </div>
-
   <div class="kpi-card kpi-blue">
     <div class="kpi-ico">📈</div>
     <div class="kpi-meta">
@@ -86,12 +76,39 @@
       <div class="kpi-value">{{ kpi.progresso }}%</div>
     </div>
   </div>
+</div>
+
+<h3 style="margin: 20px 0 10px 0; color: #666;">📦 Movimentação de Carga (Transferências)</h3>
+<div class="kpi-grid">
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-ico">📤</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Saídas (Expedição)</div>
+      <div class="kpi-value">{{ kpi.saidas }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-green">
+    <div class="kpi-ico">📥</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Entradas (Retorno)</div>
+      <div class="kpi-value">{{ kpi.entradas }}</div>
+    </div>
+  </div>
+
+  <div class="kpi-card kpi-orange">
+    <div class="kpi-ico">🔔</div>
+    <div class="kpi-meta">
+      <div class="kpi-label">Aguardando Confirmação</div>
+      <div class="kpi-value">{{ kpi.transf_pendentes }}</div>
+    </div>
+  </div>
 
   <div class="kpi-card kpi-purple">
-    <div class="kpi-ico">⚠️</div>
+    <div class="kpi-ico">📋</div>
     <div class="kpi-meta">
-      <div class="kpi-label">Rotas sem lojas</div>
-      <div class="kpi-value">{{ kpi.rotas_sem_lojas }}</div>
+      <div class="kpi-label">Total no Período</div>
+      <div class="kpi-value">{{ kpi.total_transf }}</div>
     </div>
   </div>
 </div>
@@ -100,7 +117,7 @@
 <div class="grid-2">
   <div class="card">
     <div class="card-title">
-      <h2>Rotas</h2>
+      <h2>Rotas Ativas</h2>
     </div>
     <ul class="list">
       {% for r in rotas %}
@@ -122,18 +139,29 @@
 
   <div class="card">
     <div class="card-title">
-      <h2>Por motoboy</h2>
+      <h2>Últimas Transferências</h2>
     </div>
     <ul class="list">
-      {% for m in por_motoboy %}
+      {% for t in ultimas_transferencias %}
         <li class="list-item">
           <div>
-            <div><strong>{{ m.motoboy__username }}</strong></div>
-            <div class="small muted">Rotas: {{ m.rotas }} | Paradas: {{ m.paradas }} | Coletadas: {{ m.coletadas }}</div>
+            <div><strong>#{{ t.id }} - {{ t.get_tipo_display|default:t.tipo|upper }}</strong></div>
+            <div class="small muted">
+                De: {{ t.loja_origem|default:"CD" }} ➔ Para: {{ t.loja_destino|default:"CD" }}
+            </div>
+            <div class="small">
+                Status: 
+                <span class="badge {% if t.status == 'confirmada' %}kpi-green{% else %}kpi-orange{% endif %}" style="padding: 2px 8px; font-size: 10px;">
+                    {{ t.status|upper }}
+                </span>
+            </div>
+          </div>
+          <div class="actions">
+            <a class="btn" href="{% url 'painel:transferencia_detalhe' t.id %}">Ver</a>
           </div>
         </li>
       {% empty %}
-        <li class="list-item"><span class="muted">Sem dados no período.</span></li>
+        <li class="list-item"><span class="muted">Sem transferências no período.</span></li>
       {% endfor %}
     </ul>
   </div>
@@ -146,7 +174,8 @@
 
     function applyMode(){
       blocks.forEach(b => b.style.display = "none");
-      document.querySelectorAll(".js-" + mode.value).forEach(b => b.style.display = "block");
+      const current = document.querySelectorAll(".js-" + mode.value);
+      if(current) current.forEach(b => b.style.display = "block");
     }
     mode.addEventListener("change", applyMode);
     applyMode();

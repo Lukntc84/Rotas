@@ -106,6 +106,16 @@ class MovimentoEstoque(models.Model):
     protocolo = models.CharField(max_length=50, blank=True)
 
 class Transferencia(models.Model):
+    
+    rota = models.ForeignKey(
+        Rota, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="transferencias",
+        verbose_name="Rota Vinculada"
+    )
+    
     STATUS_CHOICES = [("pendente", "Pendente"), ("confirmada", "Confirmada")]
     TIPO_CHOICES = [("cd_para_loja", "CD -> Loja"), ("loja_para_cd", "Loja -> CD")]
 

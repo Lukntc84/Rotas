@@ -9,12 +9,13 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required, user_passes_test
-
+from django.db.models import Q
 from .decorators import admin_interno_required
 from .forms import LojaForm, UsuarioCriarForm, UsuarioEditarForm, UsuarioGrupoForm,ProtocoloConfirmarForm, ProtocoloForm, MovimentoEstoqueForm, TransferenciaForm
 from rotas.models import Loja, Protocolo
 from rotas.models import MovimentoEstoque, Transferencia, Loja, Protocolo
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 
 
 
@@ -312,21 +313,36 @@ def nova_saida(request):
 
     return render(request, "gestao/movimento_form.html", {"form": form, "titulo": "Nova Saída"})
 
-@admin_interno_required
+@login_required
 def transferencias_lista(request):
-    qs = Transferencia.objects.all()
-    return render(request, "gestao/transferencias_lista.html", {"transferencias": qs})
+    user = request.user
+    
+
+    if user.is_staff:
+        qs = Transferencia.objects.all()
+    
+    # 2. Se for Loja ou Motoboy (ajuste os nomes dos campos conforme seu modelo)
+    else:
+        qs = Transferencia.objects.filter(usuario=user)
+
+    return render(request, "painel/transferencias_lista.html", {"transferencias": qs})
 
 
-@admin_interno_required
+@login_required
 def transferencia_nova(request):
+    # Opcional: Impedir motoboy de criar, se desejar
+    if request.user.user_type == 'motoboy': 
+        raise PermissionDenied
+
     if request.method == "POST":
         form = TransferenciaForm(request.POST)
         if form.is_valid():
-            tr = form.save()
+            tr = form.save(commit=False)
+            tr.usuario = request.user # Garante que a transferência salve quem a criou
+            tr.save()
             messages.success(request, f"Protocolo gerado: {tr.protocolo}")
-            return redirect("gestao:transferencias_lista")
+            return redirect("painel:transferencias_lista")
     else:
         form = TransferenciaForm()
 
-    return render(request, "gestao/transferencia_form.html", {"form": form})
+    return render(request, "painel/transferencia_form.html", {"form": form})

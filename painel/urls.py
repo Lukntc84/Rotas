@@ -18,4 +18,5 @@ urlpatterns = [
     path("transferencias/<int:transferencia_id>/", views.transferencia_detalhe, name="transferencia_detalhe"),
     path("transferencias/<int:transferencia_id>/confirmar/", views.transferencia_confirmar, name="transferencia_confirmar"),
     path('transferencias/<int:transferencia_id>/excluir/', views.transferencia_excluir, name='transferencia_excluir'),
+    path('transferencias/criar-rota/', views.criar_rota_motorista, name='criar_rota_motorista'),
 ]

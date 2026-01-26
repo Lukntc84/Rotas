@@ -1,35 +1,48 @@
 {% extends "painel/base.html" %}
 
-{% block header_title %}Transferências{% endblock %}
+{% block header_title %}Painel de Logística{% endblock %}
 
 {% block header_actions %}
   {% if perms.rotas.add_transferencia %}
-    <a class="btn btn-primary" href="{% url 'painel:transferencia_nova' %}">+ Nova</a>
+    <a class="btn btn-primary" href="{% url 'painel:transferencia_nova' %}">+ Nova Transferência</a>
   {% endif %}
 {% endblock %}
 
 {% block content %}
-  <div class="card">
-    <div class="card-title">
-      <h2>Últimas transferências</h2>
-      <span class="badge">{{ transferencias|length }}</span>
-    </div>
+<div class="page-inner">
+  <form method="POST" action="{% url 'painel:criar_rota_motorista' %}">
+    {% csrf_token %}
+    
+    <div class="card">
+      <div class="card-title">
+        <h2>Transferências Pendentes</h2>
+        <button type="submit" class="btn btn-primary">
+           Criar Rota com Selecionados
+        </button>
+      </div>
 
-    <ul class="list">
-      {% for t in transferencias %}
-        <li class="list-item">
-          <div>
-            <div><strong>{{ t.protocolo }}</strong> - {{ t.get_tipo_display }}</div>
-            <div class="small muted">{{ t.loja.nome }} • {{ t.loja.endereco }}</div>
-            <div class="small">Status: <span class="badge">{{ t.status }}</span></div>
-          </div>
-          <div class="actions">
-            <a class="btn" href="{% url 'painel:transferencia_detalhe' t.id %}">Abrir</a>
-          </div>
-        </li>
-      {% empty %}
-        <li class="list-item"><span class="muted">Nenhuma transferência.</span></li>
-      {% endfor %}
-    </ul>
-  </div>
+      <ul class="list">
+        {% for t in transferencias %}
+          <li class="list-item">
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}" style="width: 20px; height: 20px;">
+              
+              <div>
+                <div class="userbox-name">{{ t.get_tipo_display }}</div>
+                <div class="small muted">{{ t.loja.nome }} • {{ t.loja.cidade }}</div>
+                <div class="small">Status: <span class="badge">{{ t.status }}</span></div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <a class="btn btn-ghost small" href="{% url 'painel:transferencia_detalhe' t.id %}">Detalhes</a>
+            </div>
+          </li>
+        {% empty %}
+          <li class="list-item"><span class="muted">Nenhuma transferência disponível para rota.</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </form>
+</div>
 {% endblock %}

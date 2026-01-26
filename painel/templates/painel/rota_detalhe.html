@@ -1,150 +1,107 @@
 {% extends "painel/base.html" %}
 
+
+
 {% block title %}Rota {{ rota.id }}{% endblock %}
 {% block header_title %}Rota #{{ rota.id }}{% endblock %}
-{% block header_sub %}{{ rota.data }}{% endblock %}
+{% block header_sub %}{{ rota.data|date:"d/m/Y" }}{% endblock %}
 
 {% block header_actions %}
   <a class="btn" href="{% url 'painel:rotas_hoje' %}">Voltar</a>
   {% if perms.rotas.add_parada %}
     <a class="btn btn-primary" href="{% url 'painel:adicionar_loja_rota' rota.id %}">+ Adicionar loja</a>
   {% endif %}
-  <form method="post" action="{% url 'logout' %}" style="display:inline;">
-  {% csrf_token %}
-</form>
-
 {% endblock %}
 
 {% block content %}
   <div class="card">
     <div class="card-title">
-      <h2>Paradas</h2>
-      <span class="badge">{{ paradas|length }} loja(s)</span>
+      <h2>Paradas da Rota</h2>
+      <span class="badge" id="count-badge">{{ paradas|length }} loja(s)</span>
     </div>
 
     <ul class="list" id="paradas-list">
       {% for p in paradas %}
-        <li class="list-item" data-id="{{ p.id }}">
-          <div>
-            <div><strong>{{ p.ordem }}</strong> - {{ p.loja.nome }}</div>
-            <div class="small muted">{{ p.loja.endereco }}</div>
-            <div class="small">Status: <span class="badge">{{ p.status }}</span></div>
+        <li class="list-item" data-id="{{ p.id }}" style="cursor: grab;">
+          <div class="drag-handle" style="margin-right: 15px; color: #ccc;">↕</div>
+          
+          <div style="flex-grow: 1;">
+            <div><strong class="ordem-numero">{{ p.ordem }}</strong> - {{ p.loja.nome }}</div>
+            <div class="small muted">{{ p.loja.endereco }}, {{ p.loja.numero }}</div>
+            <div class="small">
+              Status: 
+              <span class="badge {% if p.status == 'coletado' %}badge-success{% endif %}">
+                {{ p.get_status_display }}
+              </span>
+            </div>
           </div>
 
-          {% if p.status != "coletado" %}
-            <form method="post" action="{% url 'painel:marcar_coletado' p.id %}">
-              {% csrf_token %}
-              <button class="btn btn-primary" type="submit">Marcar coletado</button>
-            </form>
-          {% endif %}
+          <div class="actions">
+            {% if p.status != "coletado" %}
+              <form method="post" action="{% url 'painel:marcar_coletado' p.id %}">
+                {% csrf_token %}
+                <button class="btn btn-primary" type="submit">Marcar coletado</button>
+              </form>
+            {% else %}
+              <span style="color: green; font-weight: bold;">✔ Coletado</span>
+            {% endif %}
+          </div>
         </li>
       {% empty %}
-         <div class="drag-handle" title="Arrastar">↕</div>
         <li class="list-item">
-          <span class="muted">Sem lojas ainda.</span>
+          <span class="muted">Nenhuma parada gerada para esta rota.</span>
         </li>
       {% endfor %}
     </ul>
   </div>
-{% endblock %}
 
-<script>
-(function () {
-  const list = document.getElementById("paradas-list");
-  if (!list) return;
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script>
+    const el = document.getElementById("paradas-list");
+    const rotaId = "{{ rota.id }}";
 
-  let draggingEl = null;
-
-  list.querySelectorAll("li").forEach(li => {
-    li.draggable = true;
-
-    li.addEventListener("dragstart", (e) => {
-      draggingEl = li;
-      li.classList.add("dragging");
-      e.dataTransfer.effectAllowed = "move";
-    });
-
-    li.addEventListener("dragend", () => {
-      li.classList.remove("dragging");
-      draggingEl = null;
-    });
-  });
-
-  list.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    const afterEl = getDragAfterElement(list, e.clientY);
-    if (!draggingEl) return;
-    if (afterEl == null) list.appendChild(draggingEl);
-    else list.insertBefore(draggingEl, afterEl);
-  });
-
-  list.addEventListener("drop", async (e) => {
-    e.preventDefault();
-    const ids = Array.from(list.querySelectorAll("li")).map(li => li.dataset.id);
-
-    // salva automaticamente
-    const res = await fetch("{% url 'painel:rota_reordenar' rota.id %}", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRFToken": "{{ csrf_token }}",
-      },
-      body: JSON.stringify({ ids })
-    });
-
-    if (!res.ok) {
-      alert("Não consegui salvar a ordem. Tente novamente.");
-      return;
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
     }
 
-    // atualiza números visuais (1,2,3...)
-    Array.from(list.querySelectorAll("li")).forEach((li, idx) => {
-      const strong = li.querySelector("strong");
-      if (strong) strong.textContent = (idx + 1);
-    });
-  });
+    if (el) {
+      new Sortable(el, {
+        animation: 150,
+        handle: '.drag-handle', // Arrastar apenas pelo ícone ↕
+        ghostClass: 'dragging',
+        onEnd: async function() {
+          const ids = [...el.querySelectorAll("li[data-id]")].map(li => li.dataset.id);
+          
+          const response = await fetch(`/painel/rotas/${rotaId}/reordenar/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({ ids: ids })
+          });
 
-  function getDragAfterElement(container, y) {
-    const els = [...container.querySelectorAll("li:not(.dragging)")];
-    return els.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      if (offset < 0 && offset > closest.offset) {
-        return { offset, element: child };
-      }
-      return closest;
-    }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
-  }
-})();
-</script>
-
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script>
-  const el = document.getElementById("paradas-list");
-  const rotaId = "{{ rota.id }}";
-
-  function getCookie(name) {
-    const v = `; ${document.cookie}`;
-    const parts = v.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-  }
-
-  new Sortable(el, {
-    animation: 150,
-    onEnd: async () => {
-      const ids = [...el.querySelectorAll("[data-id]")].map(li => Number(li.dataset.id));
-      const resp = await fetch(`/painel/rotas/${rotaId}/reordenar/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": getCookie("csrftoken"),
-        },
-        body: JSON.stringify({ ids })
+          if (response.ok) {
+            // Atualiza os números visuais 1, 2, 3...
+            el.querySelectorAll(".ordem-numero").forEach((span, index) => {
+              span.textContent = index + 1;
+            });
+          } else {
+            alert("Erro ao salvar a nova ordem no servidor.");
+          }
+        }
       });
-
-      if (!resp.ok) {
-        alert("Não consegui salvar a nova ordem.");
-      }
     }
-  });
-</script>
+  </script>
+{% endblock %}

@@ -10,7 +10,7 @@ from django.contrib import messages
 
 from rotas.models import Rota, Parada,Transferencia
 from .forms import AdicionarLojaRotaForm, CriarRotaForm, TransferenciaForm
-
+from django.core.exceptions import PermissionDenied
 import json
 from django.db import transaction
 from django.http import JsonResponse, HttpResponseForbidden
@@ -68,67 +68,63 @@ def _get_date_filter(request):
 def home(request):
     mode, filt = _get_date_filter(request)
 
+    # 1. Queries Base
     rotas_qs = Rota.objects.select_related("motoboy")
     paradas_qs = Parada.objects.select_related("rota", "loja", "rota__motoboy")
+    transf_qs = Transferencia.objects.all()
 
-    # ✅ Motoboy vê só as rotas dele (no dashboard também)
+    # 2. IDENTIFICAÇÃO DO USUÁRIO (SEGURANÇA)
+    loja_logada = _get_loja_usuario(request.user)
+    
     if _is_motoboy(request.user):
         rotas_qs = rotas_qs.filter(motoboy=request.user)
         paradas_qs = paradas_qs.filter(rota__motoboy=request.user)
+        transf_qs = transf_qs.filter(motorista=request.user)
+        
+    elif loja_logada:
+        # ✅ REGRA SOLICITADA: Loja só vê o que é dela
+        # Filtra transferências onde a loja logada é a origem OU o destino
+        transf_qs = transf_qs.filter(
+            Q(loja_origem=loja_logada) | Q(loja_destino=loja_logada)
+        )
+        # Filtra rotas e paradas para mostrar apenas as visitas nesta loja
+        rotas_qs = rotas_qs.filter(paradas__loja=loja_logada).distinct()
+        paradas_qs = paradas_qs.filter(loja=loja_logada)
 
-    # filtro por data
-    if mode == "all":
-        pass
-    elif mode == "range":
+    # 3. FILTRO POR DATA (Reutilizando sua lógica)
+    if mode == "range":
         start, end = filt
         rotas_qs = rotas_qs.filter(data__range=(start, end))
         paradas_qs = paradas_qs.filter(rota__data__range=(start, end))
-    else:
+        transf_qs = transf_qs.filter(criado_em__date__range=(start, end))
+    elif mode != "all":
         rotas_qs = rotas_qs.filter(data__in=filt)
         paradas_qs = paradas_qs.filter(rota__data__in=filt)
+        transf_qs = transf_qs.filter(criado_em__date__in=filt)
 
-    total_rotas = rotas_qs.count()
+    # 4. CÁLCULOS PARA O DASHBOARD
     total_paradas = paradas_qs.count()
     coletadas = paradas_qs.filter(status="coletado").count()
-    pendentes = total_paradas - coletadas
-    progresso = int((coletadas / total_paradas) * 100) if total_paradas else 0
-
-    rotas = (
-        rotas_qs
-        .annotate(
-            total_lojas=Count("paradas", distinct=True),
-            lojas_coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
-        )
-        .order_by("data", "id")
-    )
-
-    por_motoboy = (
-        rotas_qs
-        .values("motoboy__username")
-        .annotate(
-            rotas=Count("id", distinct=True),
-            total_paradas=Count("paradas", distinct=True),
-            coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
-        )
-        .order_by("motoboy__username")
-    )
-
-
-    rotas_sem_lojas = rotas_qs.annotate(qtd=Count("paradas")).filter(qtd=0).count()
-
+    
     context = {
         "mode": mode,
         "filt": filt,
         "kpi": {
-            "total_rotas": total_rotas,
+            "total_rotas": rotas_qs.count(),
             "total_paradas": total_paradas,
             "coletadas": coletadas,
-            "pendentes": pendentes,
-            "progresso": progresso,
-            "rotas_sem_lojas": rotas_sem_lojas,
+            "pendentes": total_paradas - coletadas,
+            "progresso": int((coletadas / total_paradas) * 100) if total_paradas else 0,
+            "total_transf": transf_qs.count(),
+            "entradas": transf_qs.filter(tipo__iexact='entrada').count(),
+            "saidas": transf_qs.filter(tipo__iexact='saida').count(),
+            "transf_pendentes": transf_qs.exclude(status="confirmada").count(),
         },
-        "rotas": rotas,
-        "por_motoboy": por_motoboy,
+        "rotas": rotas_qs.annotate(
+            total_lojas=Count("paradas", distinct=True),
+            lojas_coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
+        ).order_by("data", "id"),
+        "ultimas_transferencias": transf_qs.order_by("-id")[:5],
         "hoje": timezone.localdate(),
     }
     return render(request, "painel/home.html", context)
@@ -450,3 +446,49 @@ def minhas_paradas(request):
     paradas = Parada.objects.filter(loja=loja_logada).select_related('rota').order_by('-rota__data')
     
     return render(request, "painel/minhas_paradas.html", {"paradas": paradas})
+
+from django.db import transaction
+
+@login_required
+def criar_rota_motorista(request):
+    if request.method == "POST":
+        ids_selecionados = request.POST.getlist('transferencias_selecionadas')
+        
+        if not ids_selecionados:
+            return redirect('painel:transferencias_lista')
+
+        with transaction.atomic():
+            # 1. Cria a Rota
+            nova_rota = Rota.objects.create(
+                nome=f"Rota {timezone.now().strftime('%d/%m %H:%M')}",
+                motoboy=request.user,
+                status="em_rota"
+            )
+
+            # 2. Busca as transferências selecionadas
+            transferencias = Transferencia.objects.filter(id__in=ids_selecionados)
+            
+            # Usaremos um dicionário para garantir que cada loja seja uma parada única
+            lojas_unicas = {}
+
+            for trans in transferencias:
+                # Vincula a transferência à rota no banco
+                trans.rota = nova_rota
+                trans.save()
+                
+                # Registra as lojas envolvidas para criar as paradas depois
+                lojas_unicas[trans.loja_origem.id] = trans.loja_origem
+                lojas_unicas[trans.loja_destino.id] = trans.loja_destino
+
+            # 3. CRIA AS PARADAS (Isso preenche o rota.paradas que sua view de detalhe busca)
+            for i, (loja_id, loja_obj) in enumerate(lojas_unicas.items()):
+                Parada.objects.create(
+                    rota=nova_rota,
+                    loja=loja_obj,
+                    ordem=i + 1,
+                    status="pendente"
+                )
+
+        return redirect('painel:rotas_hoje')
+    
+    return redirect('painel:transferencias_lista')

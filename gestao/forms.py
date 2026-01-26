@@ -30,7 +30,7 @@ class UsuarioCriarForm(forms.Form):
         ("Admin", "Admin"),
         ("Operador", "Operador"),
         ("Motoboy", "Motoboy"),
-        ("Loja", "Loja"), # Adicione esta linha
+        ("Loja", "Loja"),
     ]
     role = forms.ChoiceField(choices=ROLE_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
 
