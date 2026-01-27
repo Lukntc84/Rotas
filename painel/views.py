@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.contrib import messages
 
-from rotas.models import Rota, Parada,Transferencia
+from rotas.models import Loja, Rota, Parada,Transferencia
 from .forms import AdicionarLojaRotaForm, CriarRotaForm, TransferenciaForm
 from django.core.exceptions import PermissionDenied
 import json
@@ -273,9 +273,11 @@ def criar_rota(request):
 def rota_reordenar(request, rota_id):
     rota = get_object_or_404(Rota, id=rota_id)
 
-    # operador/admin podem reordenar
-    if not request.user.has_perm("rotas.change_parada") and not request.user.has_perm("rotas.change_rota"):
-        return HttpResponseForbidden("Sem permissão.")
+    e_dono = (rota.motoboy == request.user)
+    tem_perm = request.user.has_perm("rotas.change_parada") or request.user.has_perm("rotas.change_rota")
+
+    if not (tem_perm or e_dono):
+        return JsonResponse({"ok": False, "error": "Sem permissão para ordenar."}, status=403)
 
     data = json.loads(request.body.decode("utf-8"))
     ids = data.get("ids", [])
@@ -328,35 +330,43 @@ def _is_motoboy(user):
 @login_required
 @permission_required("rotas.view_transferencia", raise_exception=True)
 def transferencias_lista(request):
-    qs = Transferencia.objects.select_related("loja", "motorista", "criado_por").order_by("-criado_em")
-    loja_logada = _get_loja_usuario(request.user)
+    # Base: apenas transferências que ainda não estão em rota
+    transferencias = Transferencia.objects.filter(rota__isnull=True).order_by('-criado_em')
+
+    # Filtro automático para Motoboys (Ponto 4)
+    if _is_motoboy(request.user):
+        transferencias = transferencias.filter(tamanho_carga="pequeno")
+
+    # Filtros via URL (para o Operador usar no Painel)
+    tamanho = request.GET.get('tamanho')
+    status = request.GET.get('status')
     
-    if loja_logada:
-        # A loja vê o que sai dela OU o que vai para ela
-        transferencias = Transferencia.objects.filter(
-            Q(loja_origem=loja_logada) | Q(loja_destino=loja_logada)
-        ).order_by('-id')
-    else:
-        # Admin ou Motoboy vê o comportamento padrão
-        transferencias = Transferencia.objects.all().order_by('-id')
-        
-    return render(request, "painel/transferencias_lista.html", {"transferencias": transferencias})
+    if tamanho:
+        transferencias = transferencias.filter(tamanho_carga=tamanho)
+    if status:
+        transferencias = transferencias.filter(status=status)
+
+    return render(request, "painel/transferencias_lista.html", {
+            "transferencias": transferencias,
+            "lojas": Loja.objects.filter(ativa=True).order_by('nome'), # ESTA LINHA É ESSENCIAL
+        })
 
 @login_required
 @permission_required("rotas.add_transferencia", raise_exception=True)
 def transferencia_nova(request):
     if request.method == "POST":
-        form = TransferenciaForm(request.POST)
+        # PASSE O USER AQUI NO POST
+        form = TransferenciaForm(request.POST, user=request.user)
         if form.is_valid():
             t = form.save(commit=False)
             t.criado_por = request.user
-            t.status = "pendente"  # ✅ Ajustado para string direta
+            t.status = "pendente"
             t.save()
-            # ✅ Ajustado para usar o ID ou numero_documento
             messages.success(request, f"Transferência criada com sucesso!") 
             return redirect("painel:transferencias_lista")
     else:
-        form = TransferenciaForm()
+        # PASSE O USER AQUI NO GET (Isso trava a lista na tela)
+        form = TransferenciaForm(user=request.user)
 
     return render(request, "painel/transferencia_form.html", {"form": form})
 
@@ -492,3 +502,46 @@ def criar_rota_motorista(request):
         return redirect('painel:rotas_hoje')
     
     return redirect('painel:transferencias_lista')
+
+@login_required
+def dashboard(request):
+    # Se for Admin (Staff), ele vê tudo.
+    if request.user.is_staff:
+        transferencias = Transferencia.objects.all()
+        rotas_ativas = Rota.objects.filter(status="em_rota")
+    else:
+        # Se for usuário de LOJA, filtramos tudo pela loja vinculada a ele
+        user_loja = request.user.loja 
+        transferencias = Transferencia.objects.filter(loja=user_loja)
+        # Filtra rotas que têm pelo menos uma parada na loja desse usuário
+        rotas_ativas = Rota.objects.filter(paradas__loja=user_loja, status="em_rota").distinct()
+
+    context = {
+        "total_rotas": rotas_ativas.count(),
+        "total_transferencias": transferencias.count(),
+        "entradas": transferencias.filter(tipo="entrada").count(),
+        "saidas": transferencias.filter(tipo="saida").count(),
+        "transferencias_recentes": transferencias.order_by("-criado_em")[:5],
+        "rotas_ativas": rotas_ativas,
+    }
+    
+    return render(request, "painel/dashboard.html", context)
+
+@login_required
+def coletar_transferencia(request, pk):
+    transferencia = get_object_or_404(Transferencia, pk=pk)
+    # Apenas o motorista da rota ou staff pode coletar
+    transferencia.status = "em_transito"
+    transferencia.save()
+    messages.success(request, f"Carga {transferencia.id} marcada como Em Trânsito!")
+    return redirect('painel:transferencias_lista')
+
+
+@login_required
+def coletar_carga(request, transferencia_id):
+    t = get_object_or_404(Transferencia, id=transferencia_id)
+    t.status = "em_transito"
+    t.motorista = request.user
+    t.save(update_fields=['status', 'motorista'])
+    messages.success(request, "Carga coletada! Status: Em Trânsito.")
+    return redirect('painel:transferencia_detalhe', transferencia_id=t.id)

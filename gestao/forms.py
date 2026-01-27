@@ -170,6 +170,22 @@ class TransferenciaForm(forms.ModelForm):
             self.add_error("loja_origem", "Selecione a loja de origem.")
 
         return cleaned
+    
+    def __init__(self, *args, **kwargs):
+            # Capturamos o usuário que a VIEW deve passar
+            user = kwargs.pop('user', None)
+            super().__init__(*args, **kwargs)
+
+            # Se o usuário não for Staff e tiver uma loja vinculada
+            if user and not user.is_staff:
+                user_loja = getattr(user, 'loja', None)
+                if user_loja:
+                    # 1. Filtra as opções para aparecer SOMENTE a loja dele
+                    self.fields['loja_origem'].queryset = Loja.objects.filter(id=user_loja.id)
+                    # 2. Deixa ela selecionada por padrão
+                    self.fields['loja_origem'].initial = user_loja
+                    # 3. Remove a opção vazia "---------"
+                    self.fields['loja_origem'].empty_label = None
 
 class ProtocoloForm(forms.ModelForm):
     class Meta:

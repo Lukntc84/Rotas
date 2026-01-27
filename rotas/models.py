@@ -28,8 +28,13 @@ class Loja(models.Model):
 
     def __str__(self):
         return f"{self.nome} - {self.cidade}/{self.uf}"
+
 class Coleta(models.Model):
-    STATUS_CHOICES = [("pendente", "Pendente"), ("em_rota", "Em rota"), ("concluida", "Concluída")]
+    STATUS_CHOICES = [
+    ("pendente", "Pendente"),
+    ("em_transito", "Em Trânsito"), # Motorista coletou
+    ("concluido", "Concluído"),    # Loja destino confirmou
+    ("cancelado", "Cancelado"),]
     data = models.DateField(default=timezone.now)
     loja = models.ForeignKey(Loja, on_delete=models.CASCADE)
     motorista = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
@@ -107,6 +112,12 @@ class MovimentoEstoque(models.Model):
 
 class Transferencia(models.Model):
     
+    TAMANHO_CHOICES = [
+        ("pequeno", "Pequeno (Motoboy)"),
+        ("medio", "Médio (Utilitário)"),
+        ("grande", "Grande (Caminhão)"),
+    ]
+    
     rota = models.ForeignKey(
         Rota, 
         on_delete=models.SET_NULL, 
@@ -117,7 +128,10 @@ class Transferencia(models.Model):
     )
     
     STATUS_CHOICES = [("pendente", "Pendente"), ("confirmada", "Confirmada")]
-    TIPO_CHOICES = [("cd_para_loja", "CD -> Loja"), ("loja_para_cd", "Loja -> CD")]
+    TIPO_CHOICES = [
+        ("entrada", "Entrada"), 
+        ("saida", "Saída")
+    ]
 
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     loja = models.ForeignKey(Loja, on_delete=models.CASCADE, null=True, blank=True)
@@ -147,6 +161,19 @@ class Transferencia(models.Model):
     criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name="transferencias_criadas")
     confirmado_em = models.DateTimeField(blank=True, null=True)
     confirmado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, blank=True, null=True, related_name="transferencias_confirmadas")
+
+    tamanho_carga = models.CharField(
+        max_length=10, 
+        choices=TAMANHO_CHOICES, 
+        default="pequeno"
+    )
+    
+    STATUS_CHOICES = [
+        ("pendente", "Pendente"), 
+        ("em_transito", "Em Trânsito"),
+        ("confirmada", "Confirmada")
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente") #
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.loja} ({self.status})"

@@ -16,7 +16,6 @@
         Painel
       {% endblock %}
     </title>
-
   </head>
 
   <body>
@@ -30,7 +29,9 @@
 
         <nav class="topbar-nav">
           <a class="topbar-link" href="{% url 'painel:home' %}">Painel</a>
-          <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
+          {% if not user.loja_perfil or user.is_staff %}
+            <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
+          {% endif %}
           {% if perms.rotas.add_rota %}
             <a class="topbar-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
           {% endif %}
@@ -41,7 +42,7 @@
           {% if request.user.is_superuser or request.user.is_staff %}
             <a class="topbar-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
           {% endif %}
-            <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
+          <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
           {% if perms.rotas.add_transferencia %}
             <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
           {% endif %}
@@ -120,24 +121,24 @@
 
       <nav class="drawer-nav">
         <a class="topbar-link" href="{% url 'painel:home' %}">Painel</a>
-          <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
-          {% if perms.rotas.add_rota %}
-            <a class="topbar-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
-          {% endif %}
+        <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
+        {% if perms.rotas.add_rota %}
+          <a class="topbar-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
+        {% endif %}
 
-          {% if request.user.is_superuser or request.user.is_staff %}
-            <a class="topbar-link" href="{% url 'gestao:usuarios_lista' %}">Usuários</a>
-          {% endif %}
-          {% if request.user.is_superuser or request.user.is_staff %}
-            <a class="topbar-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
-          {% endif %}
-          {% if request.user.is_superuser or request.user.is_staff %}
-            <a class="drawer-link" href="{% url 'gestao:protocolos_lista' %}">Protocolos</a>
-          {% endif %}
-            <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
-          {% if perms.rotas.add_transferencia %}
-            <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
-          {% endif %}
+        {% if request.user.is_superuser or request.user.is_staff %}
+          <a class="topbar-link" href="{% url 'gestao:usuarios_lista' %}">Usuários</a>
+        {% endif %}
+        {% if request.user.is_superuser or request.user.is_staff %}
+          <a class="topbar-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
+        {% endif %}
+        {% if request.user.is_superuser or request.user.is_staff %}
+          <a class="drawer-link" href="{% url 'gestao:protocolos_lista' %}">Protocolos</a>
+        {% endif %}
+        <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
+        {% if perms.rotas.add_transferencia %}
+          <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
+        {% endif %}
       </nav>
 
       <div class="drawer-foot">

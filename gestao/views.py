@@ -346,3 +346,17 @@ def transferencia_nova(request):
         form = TransferenciaForm()
 
     return render(request, "painel/transferencia_form.html", {"form": form})
+
+@login_required
+def transferencia_create(request):
+    if request.method == "POST":
+        # Aqui você passa o user para o formulário processar os dados
+        form = TransferenciaForm(request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect('painel:transferencias_lista')
+    else:
+        # Aqui você passa o user para o formulário FILTRAR a lista de lojas
+        form = TransferenciaForm(user=request.user)
+    
+    return render(request, "painel/transferencia_form.html", {"form": form})

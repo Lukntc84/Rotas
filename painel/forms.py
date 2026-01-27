@@ -75,13 +75,18 @@ class TransferenciaForm(forms.ModelForm):
             "observacoes", # Garantido com 's' conforme seu model funcional
         ]
         widgets = {
-            # Isso corrige o erro <MultiValueDict: {}> que aparece na sua imagem
-            "data": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "observacoes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+           "quantidade": forms.NumberInput(attrs={
+                "class": "form-control input-bonitinho-qtd" # Adicionamos essa classe
+            }),
+            "data": forms.DateInput(attrs={
+                    "type": "date", 
+                    "class": "form-control input-bonitinho-data" # Adicionamos essa classe
+                }),
+            # Mantenha os outros como estão
             "tipo": forms.Select(attrs={"class": "form-control"}),
-            "motorista": forms.Select(attrs={"class": "form-control"}),
             "loja_origem": forms.Select(attrs={"class": "form-control"}),
             "loja_destino": forms.Select(attrs={"class": "form-control"}),
+            "observacoes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
         labels = {
             "tipo": "Tipo",
@@ -95,3 +100,14 @@ class TransferenciaForm(forms.ModelForm):
             "numero_documento": "Nº do Documento (NF/Recibo)",
             "observacoes": "Observações",
         }
+    def __init__(self, *args, **kwargs):
+            user = kwargs.pop('user', None)
+            super().__init__(*args, **kwargs)
+
+            if user and not user.is_staff:
+                # No seu models.py, o related_name é 'loja_perfil'
+                user_loja = getattr(user, 'loja_perfil', None)
+                if user_loja:
+                    self.fields['loja_origem'].queryset = Loja.objects.filter(id=user_loja.id)
+                    self.fields['loja_origem'].initial = user_loja
+                    self.fields['loja_origem'].empty_label = None
