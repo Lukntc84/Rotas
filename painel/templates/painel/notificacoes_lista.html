@@ -1,0 +1,22 @@
+{% extends 'painel/base.html' %}
+{% block content %}
+<div class="card">
+    <div class="card-title"><h2>Minhas Notificações</h2></div>
+    <ul class="list">
+        {% for n in request.user.notificacoes.all %}
+            <li class="list-item" style="{% if not n.lida %}background: #f0f7ff; border-left: 4px solid #3182ce;{% endif %}">
+                <div style="flex: 1;">
+                    <div style="font-weight: bold;">{{ n.titulo }}</div>
+                    <div class="small muted">{{ n.mensagem }}</div>
+                    <div class="small muted" style="font-size: 0.7rem;">{{ n.criada_em|date:"d/m H:i" }}</div>
+                </div>
+                {% if not n.lida %}
+                    <a href="{% url 'painel:notificacao_ler' n.id %}" class="btn btn-sm">OK</a>
+                {% endif %}
+            </li>
+        {% empty %}
+            <li class="list-item">Nenhuma notificação encontrada.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

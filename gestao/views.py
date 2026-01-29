@@ -17,16 +17,21 @@ from rotas.models import MovimentoEstoque, Transferencia, Loja, Protocolo
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 
-
-
-
 User = get_user_model()
 
 
-def _set_group(user, group_name: str):
-    grp, _ = Group.objects.get_or_create(name=group_name)
-    user.groups.clear()
-    user.groups.add(grp)
+def _set_group(user, role):
+    from django.contrib.auth.models import Group
+    
+    # Se a role vier como 'Admin', mudamos para o grupo que vê tudo
+    if role == "Admin":
+        group_name = "AdminInterno"
+    else:
+        group_name = role
+
+    group, created = Group.objects.get_or_create(name=group_name)
+    user.groups.clear() # Limpa grupos antigos para não acumular
+    user.groups.add(group)
 
 
 def _send_set_password_link(request, user):
@@ -69,17 +74,18 @@ def usuarios_lista(request):
 
 @admin_interno_required
 def usuario_criar(request):
-    # Pegamos a lista de lojas que ainda não possuem usuário para o dropdown
     lojas_disponiveis = Loja.objects.filter(usuario__isnull=True).order_by("nome")
 
     if request.method == "POST":
         form = UsuarioCriarForm(request.POST)
-        loja_id = request.POST.get("vincular_loja") # Pegamos o ID da loja do POST
+        loja_id = request.POST.get("vincular_loja")
+        # Captura o telefone do POST (precisamos que ele esteja no form)
+        telefone = request.POST.get("telefone") 
 
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # 1. Cria o usuário usando sua lógica padrão
+                    # 1. Cria o usuário
                     user = User.objects.create(
                         username=form.cleaned_data["username"],
                         email=form.cleaned_data.get("email") or "",
@@ -88,27 +94,37 @@ def usuario_criar(request):
                         is_active=form.cleaned_data.get("is_active", True),
                     )
 
-                    # 2. Define o grupo (Motoboy, Operador ou Loja)
+                    # 2. Define o grupo
                     role = form.cleaned_data["role"]
                     _set_group(user, role)
 
-                    # 3. LÓGICA NOVA: Se for Loja, vincula ao objeto Loja
+                    
+                    if role == "Admin":
+                        user.is_staff = True     
+                        user.is_superuser = True  
+                        user.save(update_fields=['is_staff', 'is_superuser'])
+                    
+                    
+                    if telefone:
+                        from rotas.models import Perfil # ajuste o import se necessário
+                        Perfil.objects.update_or_create(user=user, defaults={'telefone': telefone})
+
+                    # 4. Vincula à Loja se for o caso
                     if role == "Loja" and loja_id:
                         loja = get_object_or_404(Loja, id=loja_id)
                         loja.usuario = user
                         loja.save()
 
-                    # 4. Define a senha (sua lógica original)
+                    # 5. Define a senha (lógica original)
                     p1 = (form.cleaned_data.get("password1") or "").strip()
                     if p1:
                         user.set_password(p1)
                         user.save(update_fields=["password"])
-                        messages.success(request, f"Usuário {user.username} criado e vinculado.")
                     else:
                         user.set_unusable_password()
                         user.save(update_fields=["password"])
-                        messages.warning(request, f"Usuário {user.username} criado sem senha.")
 
+                    messages.success(request, f"Usuário {user.username} criado com sucesso.")
                     return redirect("gestao:usuarios_lista")
             except Exception as e:
                 messages.error(request, f"Erro ao criar usuário: {e}")
@@ -120,7 +136,6 @@ def usuario_criar(request):
         "lojas_disponiveis": lojas_disponiveis
     })
 
-
 @admin_interno_required
 def usuario_editar(request, user_id):
     u = get_object_or_404(User, id=user_id)
@@ -128,15 +143,23 @@ def usuario_editar(request, user_id):
     if request.method == "POST":
         form = UsuarioEditarForm(request.POST, instance=u)
         if form.is_valid():
-            u = form.save()
-            _set_group(u, form.cleaned_data["role"])
-            messages.success(request, f"Usuário {u.username} atualizado.")
+            with transaction.atomic():
+                # Salva os dados básicos (User)
+                u = form.save()
+                _set_group(u, form.cleaned_data["role"])
+                
+                # Salva o telefone (Perfil)
+                from rotas.models import Perfil
+                p, _ = Perfil.objects.get_or_create(user=u)
+                p.telefone = form.cleaned_data["telefone"]
+                p.save()
+                
+            messages.success(request, "Usuário e telefone atualizados!")
             return redirect("gestao:usuarios_lista")
     else:
         form = UsuarioEditarForm(instance=u)
 
     return render(request, "gestao/usuario_editar.html", {"form": form, "u": u})
-
 
 @admin_interno_required
 def usuario_definir_senha(request, user_id):

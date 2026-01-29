@@ -16,6 +16,8 @@ from django.db import transaction
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
 
+from rotas.models import Notificacao
+
 
 def _is_motoboy(user):
     return user.groups.filter(name="Motoboy").exists()
@@ -144,14 +146,13 @@ def home(request):
 def rotas_hoje(request):
     hoje = timezone.localdate()
 
+    # No seu painel/views.py, ajuste a linha do prefetch:
     rotas = (
         Rota.objects.filter(data=hoje)
         .select_related("motoboy")
         .prefetch_related(
-            Prefetch(
-                "paradas",
-                queryset=Parada.objects.select_related("loja").order_by("ordem"),
-            )
+            Prefetch("paradas", queryset=Parada.objects.select_related("loja").order_by("ordem")),
+            "transferencias" # Adicione esta linha aqui
         )
     )
 
@@ -266,13 +267,12 @@ def criar_rota(request):
             motoboy = form.cleaned_data["motoboy"]
             lojas_selecionadas = form.cleaned_data["lojas"]
 
-            # Usa transação para garantir que cria tudo ou nada (evita rota vazia se der erro)
             with transaction.atomic():
                 # 1. Cria a Rota
                 rota = Rota.objects.create(
                     data=hoje,
                     motoboy=motoboy,
-                    status="aberta" # Correção do erro de atributo 'Status'
+                    status="aberta"
                 )
 
                 # 2. Cria as Paradas Automaticamente
@@ -284,7 +284,15 @@ def criar_rota(request):
                         status="pendente"
                     )
 
-            messages.success(request, f"Rota criada com {len(lojas_selecionadas)} paradas!")
+                # 3. CRIA A NOTIFICAÇÃO PARA O MOTORISTA (Novo passo)
+                # Importante: O motorista aqui é o 'motoboy' vindo do formulário
+                Notificacao.objects.create(
+                    usuario=motoboy,
+                    titulo="Nova Rota Atribuída! 🚚",
+                    mensagem=f"Você recebeu uma nova rota com {len(lojas_selecionadas)} paradas para hoje ({hoje.strftime('%d/%m')})."
+                )
+
+            messages.success(request, f"Rota criada com {len(lojas_selecionadas)} paradas e motorista notificado!")
             return redirect("painel:rota_detalhe", rota_id=rota.id)
     else:
         form = CriarRotaForm()
@@ -597,3 +605,16 @@ def confirmar_recebimento(request, pk):
     transferencia.save()
     messages.success(request, "Entrega confirmada com sucesso!")
     return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
+
+@login_required
+def marcar_notificacao_lida(request, notificacao_id):
+    notificacao = get_object_or_404(Notificacao, id=notificacao_id, usuario=request.user)
+    notificacao.lida = True
+    notificacao.save()
+    return redirect('painel:notificacoes_lista') # Ou para a home
+
+# painel/views.py
+@login_required
+def notificacoes_lista(request):
+    notificacoes = request.user.notificacoes.all()
+    return render(request, 'painel/notificacoes_lista.html', {'notificacoes': notificacoes})

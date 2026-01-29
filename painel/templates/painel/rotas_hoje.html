@@ -31,23 +31,40 @@
             <a class="title-link" href="{% url 'painel:rota_detalhe' r.id %}">{{ r.nome|default:'Rota sem nome' }} #{{ r.id }}</a>
             <div class="small muted">Motoboy: {{ r.motoboy.username }}</div>
 
-            <div class="small" style="margin-top: 5px;">
-              {% if r.transferencias.all %}
-                {% for t in r.transferencias.all %}
-                  <strong style="color: var(--primary);">{{ t.loja_origem.nome }}</strong>
-                  <span class="muted">→</span>
-                  <strong>{{ t.loja_destino.nome }}</strong>
-                  {% if not forloop.last %} | {% endif %}
-                {% endfor %}
-              {% else %}
-                <span class="muted" style="color: #ef4444;">(Aguardando vinculação no banco)</span>
-              {% endif %}
-            </div>
-          </div>
+<div class="small" style="margin-top: 5px;">
+  {# 1. Primeiro, verifica se existem Transferências vinculadas #}
+  {% if r.transferencias.all %}
+    {% for t in r.transferencias.all %}
+      <strong style="color: #3182ce;">{{ t.loja_origem.nome }} → {{ t.loja_destino.nome }}</strong>
+      {% if not forloop.last %} | {% endif %}
+    {% endfor %}
+  
+  {# 2. Se não houver transferências, verifica se existem Paradas (Lojas) #}
+  {% elif r.paradas.all %}
+    {% for p in r.paradas.all %}
+      <span style="color: #4a5568;">{{ p.loja.nome }}</span>
+      {% if not forloop.last %} • {% endif %}
+    {% endfor %}
 
-          <div class="actions">
-            <a class="btn btn-primary" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
-          </div>
+  {# 3. Só exibe o erro se os DOIS estiverem vazios #}
+  {% else %}
+    <span class="muted" style="color: #ef4444;">(Sem paradas ou transferências vinculadas)</span>
+  {% endif %}
+</div>
+
+<div class="actions" style="display: flex; gap: 8px; align-items: center;">
+    {% if r.motoboy.username %}
+        {# Link direto para o WhatsApp do motorista #}
+        <a href="https://wa.me/{{ r.motoboy.perfil.telefone|default:'' }}?text=Olá%20{{ r.motoboy.username }},%20uma%20nova%20rota%20foi%20atribuída%20a%20você:%20Rota%20%23{{ r.id }}.%20Confira%20no%20painel!" 
+           target="_blank" 
+           class="btn" 
+           style="background-color: #25D366; color: white; border: none; padding: 8px 12px; display: flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px; font-size: 13px;">
+           <span style="font-size: 16px;">💬</span> WhatsApp
+        </a>
+    {% endif %}
+    
+    <a class="btn btn-primary" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
+</div>
         </li>
       {% endfor %}
     </ul>

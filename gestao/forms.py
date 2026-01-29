@@ -49,22 +49,21 @@ class UsuarioCriarForm(forms.Form):
 
 class UsuarioEditarForm(forms.ModelForm):
     role = forms.ChoiceField(choices=ROLE_CHOICES, label="Grupo")
+    # Este campo aparecerá automaticamente no as_p
+    telefone = forms.CharField(label="Telefone / WhatsApp", required=False)
 
     class Meta:
         model = User
         fields = ["username", "email", "first_name", "last_name", "is_active"]
-        labels = {
-            "username": "Usuário",
-            "email": "E-mail",
-            "first_name": "Nome",
-            "last_name": "Sobrenome",
-            "is_active": "Ativo",
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        grp = self.instance.groups.first() if self.instance and self.instance.pk else None
-        self.fields["role"].initial = grp.name if grp else "Operador"
+        # Carrega o telefone atual do perfil para o formulário
+        if self.instance and self.instance.pk:
+            try:
+                self.fields["telefone"].initial = self.instance.perfil.telefone
+            except:
+                self.fields["telefone"].initial = ""
 
 
 class UsuarioGrupoForm(forms.Form):

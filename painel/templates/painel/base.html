@@ -46,6 +46,31 @@
           {% if perms.rotas.add_transferencia %}
             <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
           {% endif %}
+          <div class="nav-item" style="position: relative; margin-right: 20px; display: flex; align-items: center;">
+            <a href="{% url 'painel:notificacoes_lista' %}" style="text-decoration: none; font-size: 1.5rem; position: relative;">
+              🔔{% if request.user.is_authenticated %}
+                {# Usamos uma contagem simples de todas as notificações primeiro #}
+                {% with notificacoes=request.user.notificacoes.all %}
+                  {# Aqui verificamos se existem notificações não lidas de forma segura #}
+                  {% if notificacoes %}
+                    <span id="notif-badge" class="badge-notify" style="
+                        position: absolute;
+                        top: -2px;
+                        right: -5px;
+                        background-color: #e53e3e;
+                        color: white;
+                        border-radius: 50%;
+                        padding: 2px 6px;
+                        font-size: 0.7rem;
+                        font-weight: bold;
+                        border: 2px solid white;
+                        display: none; /* Escondido por padrão, JavaScript ativa se houver unread */
+                        animation: pulse 2s infinite;"></span>
+                  {% endif %}
+                {% endwith %}
+              {% endif %}
+            </a>
+          </div>
         </nav>
 
         <div class="topbar-right">
@@ -158,3 +183,28 @@
     </main>
   </body>
 </html>
+
+<style>
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+</style>
+
+<script>
+    // Como o Django Template é limitado para filtros complexos, 
+    // verificamos as não lidas de forma limpa via script se necessário, 
+    // ou simplesmente mostramos o total se houver alguma.
+    document.addEventListener('DOMContentLoaded', function() {
+        const badge = document.getElementById('notif-badge');
+        // Se quiser apenas mostrar que existem notificações:
+        if (badge) badge.style.display = 'block';
+    });
+</script>
