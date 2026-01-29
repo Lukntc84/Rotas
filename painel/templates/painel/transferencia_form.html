@@ -1,102 +1,116 @@
-{% extends "painel/base.html" %}
+{% extends 'painel/base.html' %}
 
-{% block header_title %}Nova Transferência{% endblock %}
+{% block header_title %}
+  Nova Transferência
+{% endblock %}
 
 {% block content %}
-<div class="card">
-  <div class="card-title">
-    <h2>Criar</h2>
+  <div class="card">
+    <div class="card-title">
+      <h2>Criar</h2>
+    </div>
+
+    <form method="post" class="form">
+      {% csrf_token %}
+
+      {{ form.non_field_errors }}
+
+      <div class="form-row">
+        <label class="label">Tipo</label>
+        {{ form.tipo }}
+        {{ form.tipo.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Nome do Produto</label>
+        {{ form.nome_produto }}
+        {{ form.nome_produto.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Marca</label>
+        {{ form.marca }}
+        {{ form.marca.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Quantidade</label>
+        {{ form.quantidade }}
+        {{ form.quantidade.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Unidade de Medida</label>
+        {{ form.unidade_medida }}
+        {{ form.unidade_medida.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Loja de Origem</label>
+        {{ form.loja_origem }}
+        {{ form.loja_origem.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Loja de Destino</label>
+        {{ form.loja_destino }}
+        {{ form.loja_destino.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Fornecedor</label>
+        {{ form.fornecedor }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Responsável</label>
+        {{ form.responsavel }}
+        {{ form.responsavel.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Motorista</label>
+        {{ form.motorista }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Retirado por</label>
+        {{ form.retirado_por }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Data</label>
+        {{ form.data }}
+        {{ form.data.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Nº da Transferência (Loja)</label>
+        {{ form.numero_transferencia }}
+        {{ form.numero_transferencia.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Porte da Carga</label>
+        {{ form.porte_carga }}  {# <--- Nome corrigido aqui #}
+        {{ form.porte_carga.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Nº do Documento (NF/Recibo)</label>
+        {{ form.numero_documento }}
+        {{ form.numero_documento.errors }}
+      </div>
+
+      <div class="form-row">
+        <label class="label">Observações</label>
+        {{ form.observacoes }}
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn" href="{% url 'gestao:transferencias_lista' %}">Cancelar</a>
+        <button class="btn btn-primary" type="submit">Gerar protocolo</button>
+      </div>
+    </form>
   </div>
-
-  <form method="post" class="form">
-    {% csrf_token %}
-
-    {{ form.non_field_errors }}
-
-    <div class="form-row">
-      <label class="label">Tipo</label>
-      {{ form.tipo }}
-      {{ form.tipo.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Nome do Produto</label>
-      {{ form.nome_produto }}
-      {{ form.nome_produto.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Marca</label>
-      {{ form.marca }}
-      {{ form.marca.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Quantidade</label>
-      {{ form.quantidade }}
-      {{ form.quantidade.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Unidade de Medida</label>
-      {{ form.unidade_medida }}
-      {{ form.unidade_medida.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Loja de Origem</label>
-      {{ form.loja_origem }}
-      {{ form.loja_origem.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Loja de Destino</label>
-      {{ form.loja_destino }}
-      {{ form.loja_destino.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Fornecedor</label>
-      {{ form.fornecedor }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Responsável</label>
-      {{ form.responsavel }}
-      {{ form.responsavel.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Motorista</label>
-      {{ form.motorista }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Retirado por</label>
-      {{ form.retirado_por }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Data</label>
-      {{ form.data }}
-      {{ form.data.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Nº do Documento (NF/Recibo)</label>
-      {{ form.numero_documento }}
-      {{ form.numero_documento.errors }}
-    </div>
-
-    <div class="form-row">
-      <label class="label">Observações</label>
-      {{ form.observacoes }}
-    </div>
-
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <a class="btn" href="{% url 'gestao:transferencias_lista' %}">Cancelar</a>
-      <button class="btn btn-primary" type="submit">Gerar protocolo</button>
-    </div>
-  </form>
-</div>
 {% endblock %}

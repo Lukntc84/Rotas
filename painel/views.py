@@ -75,31 +75,34 @@ def home(request):
 
     # 2. IDENTIFICAÇÃO DO USUÁRIO (SEGURANÇA)
     loja_logada = _get_loja_usuario(request.user)
+    is_motoboy = _is_motoboy(request.user)
+    is_admin = request.user.is_staff
     
-    if _is_motoboy(request.user):
+    if is_motoboy:
         rotas_qs = rotas_qs.filter(motoboy=request.user)
         paradas_qs = paradas_qs.filter(rota__motoboy=request.user)
         transf_qs = transf_qs.filter(motorista=request.user)
         
     elif loja_logada:
-        # ✅ REGRA SOLICITADA: Loja só vê o que é dela
-        # Filtra transferências onde a loja logada é a origem OU o destino
+        # ✅ Filtra apenas as transferências da loja
         transf_qs = transf_qs.filter(
             Q(loja_origem=loja_logada) | Q(loja_destino=loja_logada)
         )
-        # Filtra rotas e paradas para mostrar apenas as visitas nesta loja
-        rotas_qs = rotas_qs.filter(paradas__loja=loja_logada).distinct()
-        paradas_qs = paradas_qs.filter(loja=loja_logada)
+        # Limpamos as rotas e paradas para que o operador de loja NÃO as veja
+        rotas_qs = Rota.objects.none() 
+        paradas_qs = Parada.objects.none()
 
-    # 3. FILTRO POR DATA (Reutilizando sua lógica)
+    # 3. FILTRO POR DATA
     if mode == "range":
         start, end = filt
-        rotas_qs = rotas_qs.filter(data__range=(start, end))
-        paradas_qs = paradas_qs.filter(rota__data__range=(start, end))
+        if not loja_logada: # Só filtra rotas se não for loja
+            rotas_qs = rotas_qs.filter(data__range=(start, end))
+            paradas_qs = paradas_qs.filter(rota__data__range=(start, end))
         transf_qs = transf_qs.filter(criado_em__date__range=(start, end))
     elif mode != "all":
-        rotas_qs = rotas_qs.filter(data__in=filt)
-        paradas_qs = paradas_qs.filter(rota__data__in=filt)
+        if not loja_logada:
+            rotas_qs = rotas_qs.filter(data__in=filt)
+            paradas_qs = paradas_qs.filter(rota__data__in=filt)
         transf_qs = transf_qs.filter(criado_em__date__in=filt)
 
     # 4. CÁLCULOS PARA O DASHBOARD
@@ -110,11 +113,14 @@ def home(request):
         "mode": mode,
         "filt": filt,
         "kpi": {
-            "total_rotas": rotas_qs.count(),
+            # KPIs de logística só terão valores para Admin ou Motoboy
+            "total_rotas": rotas_qs.count() if not loja_logada else 0,
             "total_paradas": total_paradas,
             "coletadas": coletadas,
             "pendentes": total_paradas - coletadas,
             "progresso": int((coletadas / total_paradas) * 100) if total_paradas else 0,
+            
+            # KPIs de transferência (Visíveis para todos)
             "total_transf": transf_qs.count(),
             "entradas": transf_qs.filter(tipo__iexact='entrada').count(),
             "saidas": transf_qs.filter(tipo__iexact='saida').count(),
@@ -123,12 +129,12 @@ def home(request):
         "rotas": rotas_qs.annotate(
             total_lojas=Count("paradas", distinct=True),
             lojas_coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
-        ).order_by("data", "id"),
+        ).order_by("data", "id") if not loja_logada else [],
+        
         "ultimas_transferencias": transf_qs.order_by("-id")[:5],
         "hoje": timezone.localdate(),
     }
     return render(request, "painel/home.html", context)
-
 
 # =========================
 # ROTAS DE HOJE
@@ -161,13 +167,30 @@ def rotas_hoje(request):
 def rota_detalhe(request, rota_id):
     rota = get_object_or_404(Rota.objects.select_related("motoboy"), id=rota_id)
 
-    # ✅ Se for motoboy, só pode abrir a própria rota
     if _is_motoboy(request.user) and rota.motoboy_id != request.user.id:
         return HttpResponseForbidden("Você não pode acessar esta rota.")
 
     paradas = rota.paradas.select_related("loja").order_by("ordem")
-    return render(request, "painel/rota_detalhe.html", {"rota": rota, "paradas": paradas})
 
+    # Dentro do loop 'for parada in paradas:' da sua função rota_detalhe
+    for parada in paradas:
+        # Busca a transferência específica para esta parada
+        t_origem = rota.transferencias.filter(loja_origem=parada.loja, status='pendente').first()
+        t_transito = rota.transferencias.filter(loja_destino=parada.loja, status='em_transito').first()
+
+        # Anexa o objeto da transferência à parada para usar no HTML
+        parada.transf_para_coletar = t_origem
+        parada.transf_para_entregar = t_transito
+
+        # Lógica de status visual que você já tem
+        if rota.transferencias.filter(loja_origem=parada.loja, status__in=['em_transito', 'confirmada']).exists():
+            parada.status_real = "Coletado"
+        elif rota.transferencias.filter(loja_destino=parada.loja, status='confirmada').exists():
+            parada.status_real = "Entregue"
+        else:
+            parada.status_real = "Pendente"
+
+    return render(request, "painel/rota_detalhe.html", {"rota": rota, "paradas": paradas})
 
 @login_required
 @permission_required("rotas.add_parada", raise_exception=True)  # operador/admin
@@ -545,3 +568,32 @@ def coletar_carga(request, transferencia_id):
     t.save(update_fields=['status', 'motorista'])
     messages.success(request, "Carga coletada! Status: Em Trânsito.")
     return redirect('painel:transferencia_detalhe', transferencia_id=t.id)
+
+from django.core.exceptions import PermissionDenied
+
+@login_required
+def confirmar_coleta(request, pk):
+
+    is_motorista = request.user.groups.filter(name='Motoboy').exists()
+    if not (is_motorista or request.user.is_staff):
+        messages.error(request, "Acesso negado: Somente motoristas podem confirmar a coleta.")
+        return redirect('painel:transferencia_detalhe', transferencia_id=pk)
+
+    transferencia = get_object_or_404(Transferencia, pk=pk)
+    transferencia.status = "em_transito"
+    transferencia.save()
+    messages.success(request, "Carga coletada com sucesso!")
+    return redirect('painel:transferencia_detalhe', transferencia_id=pk)
+
+@login_required
+def confirmar_recebimento(request, pk):
+    transferencia = get_object_or_404(Transferencia, pk=pk)
+    
+    if transferencia.status != 'em_transito':
+        messages.error(request, "Ação negada: A carga precisa ser coletada antes de ser entregue.")
+        return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
+
+    transferencia.status = "confirmada"
+    transferencia.save()
+    messages.success(request, "Entrega confirmada com sucesso!")
+    return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)

@@ -816,3 +816,33 @@ select:focus{
     -webkit-appearance: none;
     margin: 0;
 }
+
+/* Divisória elegante entre blocos */
+.info-divider {
+    border: 0;
+    height: 1px;
+    background: #eee;
+    margin: 15px 0;
+}
+
+/* Bloco de destaque para o Porte da Carga */
+.porte-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 0.9em;
+    background-color: #f0f4f8;
+    color: #2c3e50;
+    border: 1px solid #d1d9e0;
+}
+
+.porte-icon {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+/* Cores específicas por porte */
+.porte-pequeno { border-left: 4px solid #3498db; } /* Azul para Motoboy */
+.porte-grande { border-left: 4px solid #e67e22; }  /* Laranja para Caminhão */

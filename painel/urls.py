@@ -19,4 +19,6 @@ urlpatterns = [
     path("transferencias/<int:transferencia_id>/confirmar/", views.transferencia_confirmar, name="transferencia_confirmar"),
     path('transferencias/<int:transferencia_id>/excluir/', views.transferencia_excluir, name='transferencia_excluir'),
     path('transferencias/criar-rota/', views.criar_rota_motorista, name='criar_rota_motorista'),
+    path('transferencia/<int:pk>/coletar/', views.confirmar_coleta, name='confirmar_coleta'),
+    path('transferencia/<int:pk>/receber/', views.confirmar_recebimento, name='confirmar_recebimento'),
 ]

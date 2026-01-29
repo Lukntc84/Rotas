@@ -9,89 +9,172 @@
 {% endblock %}
 
 {% block content %}
-  <div class="card">
-    <div class="card-title">
-      <h2>Detalhes do Pedido</h2>
-      <span class="badge {% if t.status == 'confirmada' %}
-          badge-success
-        {% else %}
-          badge-warning
-        {% endif %}">
-        {{ t.status|upper }}
-      </span>
-    </div>
+<style>
+    /* Estilos para melhoria de interface (UX) */
+    .info-section {
+        background: #fff;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #edf2f7;
+    }
+    .info-title {
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        color: #718096;
+        margin-bottom: 12px;
+        border-bottom: 2px solid #edf2f7;
+        padding-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .porte-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        margin-top: 10px;
+        background: #f7fafc;
+        border: 1px solid #e2e8f0;
+    }
+    .badge-status {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.85rem;
+    }
+    .tag-numero {
+        background: #ebf8ff;
+        color: #2b6cb0;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+</style>
 
-    <div class="form">
-      <div class="row" style="display: flex; gap: 20px; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 250px;">
-          <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">Logística</h4>
-          <div>
-            <strong>Loja Origem:</strong> {{ t.loja_origem.nome|default:'—' }}
-          </div>
-          <div>
-            <strong>Loja Destino:</strong> {{ t.loja_destino.nome|default:'—' }}
-          </div>
+<div class="card">
+  <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="margin:0;">Detalhes do Pedido</h2>
+    <span class="badge-status 
+      {% if t.status == 'confirmada' %}badge-success
+      {% elif t.status == 'em_transito' %}badge-info
+      {% else %}badge-warning{% endif %}">
+      {{ t.status|upper }}
+    </span>
+  </div>
 
-          <br />
-          <div>
-            <strong>Motorista:</strong> {{ t.motorista.username|default:'—' }}
-          </div>
+  <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    
+    {# --- BLOCO 1: LOGÍSTICA --- #}
+    <div class="info-section">
+      <h4 class="info-title">📍 Logística de Entrega</h4>
+      <div style="margin-bottom: 8px;"><strong>Origem:</strong> {{ t.loja_origem.nome|default:'—' }}</div>
+      <div style="margin-bottom: 8px;"><strong>Destino:</strong> {{ t.loja_destino.nome|default:'—' }}</div>
+      <div style="margin-bottom: 8px;"><strong>Motorista Responsável:</strong> {{ t.motorista.username|default:'—' }}</div>
 
-          <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
-            <form method="post">
-              {% csrf_token %}
-              <label><strong>Retirado por:</strong></label>
-              {% if t.status != 'confirmada' %}
-                <div style="display: flex; gap: 5px;">
-                  <input type="text" name="retirado_por" value="{{ t.retirado_por|default:'' }}" class="form-control" style="height: 30px;" />
-                  <button type="submit" name="atualizar_retirado" class="btn btn-sm" style="background: #6c757d; color: white;">Salvar</button>
-                </div>
-              {% else %}
-                <span>{{ t.retirado_por|default:'—' }}</span>
-              {% endif %}
-            </form>
-          </div>
-
-          <div>
-            <strong>Nº Documento/NF:</strong> {{ t.numero_documento|default:'—' }}
-          </div>
-        </div>
-
-        <div style="flex: 1; min-width: 250px;">
-          <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px;">Informações do Produto</h4>
-          <div>
-            <strong>Produto:</strong> {{ t.nome_produto|default:'—' }}
-          </div>
-          <div>
-            <strong>Marca:</strong> {{ t.marca|default:'—' }}
-          </div>
-          <div>
-            <strong>Quantidade:</strong> {{ t.quantidade }} {{ t.unidade_medida }}
-          </div>
-          <div>
-            <strong>Data:</strong> {{ t.data|date:'d/m/Y' }}
-          </div>
-        </div>
+      <div class="porte-badge">
+        <span style="font-size: 1.2rem; margin-right: 8px;">
+            {% if t.porte_carga == 'pequeno' %}📦{% else %}🚚{% endif %}
+        </span>
+        Porte: {{ t.get_porte_carga_display|default:'Não definido' }}
       </div>
 
-      {% if t.status != 'confirmada' %}
-        <form method="post" action="{% url 'painel:transferencia_confirmar' t.id %}" style="margin-top: 25px;">
+      <div style="margin-top: 15px; padding: 12px; background: #f8fafc; border: 1px dashed #cbd5e0; border-radius: 6px;">
+        <form method="post">
           {% csrf_token %}
-          <button class="btn btn-primary" type="submit" style="width: 100%;">Finalizar e Confirmar Transferência</button>
+          <label style="font-size: 0.85rem; color: #4a5568;"><strong>Conferido/Retirado por:</strong></label>
+          {% if t.status == 'pendente' %}
+            <div style="display: flex; gap: 5px; margin-top: 5px;">
+              <input type="text" name="retirado_por" value="{{ t.retirado_por|default:'' }}" class="input" style="flex: 1; height: 35px;" placeholder="Nome do conferente" />
+              <button type="submit" name="atualizar_retirado" class="btn btn-primary" style="padding: 0 15px;">Salvar</button>
+            </div>
+          {% else %}
+            <div style="margin-top: 5px; font-weight: bold; color: #2d3748;">{{ t.retirado_por|default:'—' }}</div>
+          {% endif %}
         </form>
-      {% endif %}
-      {% if user.is_superuser %}
-        <hr style="border-top: 1px dashed #f00; margin: 30px 0 10px 0;" />
-        <div style="background: #fff5f5; padding: 15px; border: 1px solid #feb2b2; border-radius: 8px;">
-          <h4 style="color: #c53030; margin-top: 0;">Zona de Perigo (Admin)</h4>
-          <p class="small muted">A exclusão de uma transferência é permanente e não pode ser desfeita.</p>
+      </div>
+    </div>
 
-          <form method="post" action="{% url 'painel:transferencia_excluir' t.id %}" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta transferência?');">
-            {% csrf_token %}
-            <button type="submit" class="btn" style="background: #c53030; color: white; width: 100%;">Excluir Transferência Permanentemente</button>
-          </form>
-        </div>
-      {% endif %}
+    {# --- BLOCO 2: INFORMAÇÕES DO PRODUTO --- #}
+    <div class="info-section">
+      <h4 class="info-title">📦 Conteúdo da Carga</h4>
+      <div style="margin-bottom: 8px;"><strong>Produto:</strong> {{ t.nome_produto|default:'—' }}</div>
+      <div style="margin-bottom: 8px;"><strong>Marca:</strong> {{ t.marca|default:'—' }}</div>
+      <div style="margin-bottom: 8px;"><strong>Quantidade:</strong> <span style="font-size: 1.1rem; color: #2b6cb0;">{{ t.quantidade }} {{ t.unidade_medida }}</span></div>
+      <div style="margin-bottom: 8px;"><strong>Data de Solicitação:</strong> {{ t.data|date:'d/m/Y' }}</div>
+      
+      <hr style="border: 0; border-top: 1px solid #edf2f7; margin: 10px 0;">
+      
+      <div style="margin-bottom: 8px;">
+        <strong>Nº Transferência:</strong> 
+        <span class="tag-numero">{{ t.numero_transferencia|default:'—' }}</span>
+      </div>
+      <div><strong>Documento/NF:</strong> {{ t.numero_documento|default:'—' }}</div>
     </div>
   </div>
+
+  {# --- BLOCO 3: OBSERVAÇÕES --- #}
+  <div class="info-section" style="margin-top: 20px;">
+    <h4 class="info-title">📝 Observações Adicionais</h4>
+    <p style="color: #4a5568; font-style: italic;">{{ t.observacoes|default:'Nenhuma observação registrada.' }}</p>
+  </div>
+
+  <hr style="margin: 30px 0;" />
+
+  {# --- ÁREA DE AÇÕES MOBILE (MOTORISTA) --- #}
+  <div class="actions-section">
+    {% if request.user.groups.all.0.name == 'Motoboy' or request.user.is_staff %}
+      
+      {% if t.status == 'pendente' %}
+        <form method="post" action="{% url 'painel:confirmar_coleta' t.id %}">
+          {% csrf_token %}
+          <button class="btn btn-info" type="submit" style="width: 100%; font-weight: bold; padding: 18px; font-size: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            🚚 CONFIRMAR SAÍDA DA LOJA
+          </button>
+        </form>
+      
+      {% elif t.status == 'em_transito' %}
+        <form method="post" action="{% url 'painel:confirmar_recebimento' t.id %}" onsubmit="return confirm('Confirmar a entrega final deste protocolo?');">
+          {% csrf_token %}
+          <button class="btn btn-success" type="submit" style="width: 100%; font-weight: bold; padding: 18px; font-size: 1rem; background-color: #28a745; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            ✅ CONFIRMAR ENTREGA NO DESTINO
+          </button>
+        </form>
+      
+      {% else %}
+        <div style="background: #f0fff4; color: #276749; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #c6f6d5;">
+            <strong style="font-size: 1.1rem;">✔ Protocolo Finalizado</strong><br>
+            <small>Carga entregue e confirmada no sistema.</small>
+        </div>
+      {% endif %}
+
+    {% else %}
+      <div style="background: #f7fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+        <div style="color: #4a5568; margin-bottom: 5px;"><strong>Acompanhamento de Status</strong></div>
+        <div style="font-weight: bold; color: #2b6cb0;">{{ t.status|upper }}</div>
+        <small class="muted">Aguardando movimentação do motorista.</small>
+      </div>
+    {% endif %}
+  </div>
+
+  {# --- ZONA DE ADMINISTRAÇÃO --- #}
+  {% if user.is_superuser %}
+    <div style="margin-top: 50px; border: 1px solid #feb2b2; border-radius: 8px; overflow: hidden;">
+      <div style="background: #fff5f5; padding: 10px 15px; border-bottom: 1px solid #feb2b2; color: #c53030; font-weight: bold; font-size: 0.8rem; text-transform: uppercase;">
+        Administração do Sistema
+      </div>
+      <div style="padding: 15px; background: #fff;">
+        <form method="post" action="{% url 'painel:transferencia_excluir' t.id %}" onsubmit="return confirm('ATENÇÃO: Esta ação é permanente. Excluir transferência?');">
+          {% csrf_token %}
+          <button type="submit" class="btn" style="background: #e53e3e; color: white; width: 100%; padding: 10px;">Excluir Permanentemente</button>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+
+
 {% endblock %}

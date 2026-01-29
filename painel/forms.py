@@ -71,8 +71,10 @@ class TransferenciaForm(forms.ModelForm):
             "motorista",
             "retirado_por",
             "data",
+            "numero_transferencia",
+            "porte_carga",
             "numero_documento",
-            "observacoes", # Garantido com 's' conforme seu model funcional
+            "observacoes", 
         ]
         widgets = {
            "quantidade": forms.NumberInput(attrs={
@@ -82,7 +84,8 @@ class TransferenciaForm(forms.ModelForm):
                     "type": "date", 
                     "class": "form-control input-bonitinho-data" # Adicionamos essa classe
                 }),
-            # Mantenha os outros como estão
+            'numero_transferencia': forms.TextInput(attrs={'class': 'input', 'placeholder': 'Ex: 65456'}),
+            'porte_carga': forms.Select(attrs={'class': 'input'}),
             "tipo": forms.Select(attrs={"class": "form-control"}),
             "loja_origem": forms.Select(attrs={"class": "form-control"}),
             "loja_destino": forms.Select(attrs={"class": "form-control"}),

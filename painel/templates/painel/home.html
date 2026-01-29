@@ -43,40 +43,43 @@
   </form>
 </div>
 
-<h3 style="margin: 20px 0 10px 0; color: #666;">📊 Logística de Rotas</h3>
-<div class="kpi-grid">
-  <div class="kpi-card">
-    <div class="kpi-ico">🗺️</div>
-    <div class="kpi-meta">
-      <div class="kpi-label">Rotas</div>
-      <div class="kpi-value">{{ kpi.total_rotas }}</div>
-    </div>
-  </div>
+{# --- SEÇÃO DE LOGÍSTICA: RESTRITA PARA MOTOBOY E ADMIN --- #}
+{% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}
+    <h3 style="margin: 20px 0 10px 0; color: #666;">📊 Logística de Rotas</h3>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-ico">🗺️</div>
+        <div class="kpi-meta">
+          <div class="kpi-label">Rotas</div>
+          <div class="kpi-value">{{ kpi.total_rotas }}</div>
+        </div>
+      </div>
 
-  <div class="kpi-card">
-    <div class="kpi-ico">📍</div>
-    <div class="kpi-meta">
-      <div class="kpi-label">Paradas</div>
-      <div class="kpi-value">{{ kpi.total_paradas }}</div>
-    </div>
-  </div>
+      <div class="kpi-card">
+        <div class="kpi-ico">📍</div>
+        <div class="kpi-meta">
+          <div class="kpi-label">Paradas</div>
+          <div class="kpi-value">{{ kpi.total_paradas }}</div>
+        </div>
+      </div>
 
-  <div class="kpi-card kpi-green">
-    <div class="kpi-ico">✅</div>
-    <div class="kpi-meta">
-      <div class="kpi-label">Coletadas</div>
-      <div class="kpi-value">{{ kpi.coletadas }}</div>
-    </div>
-  </div>
+      <div class="kpi-card kpi-green">
+        <div class="kpi-ico">✅</div>
+        <div class="kpi-meta">
+          <div class="kpi-label">Coletadas</div>
+          <div class="kpi-value">{{ kpi.coletadas }}</div>
+        </div>
+      </div>
 
-  <div class="kpi-card kpi-blue">
-    <div class="kpi-ico">📈</div>
-    <div class="kpi-meta">
-      <div class="kpi-label">% Concluído</div>
-      <div class="kpi-value">{{ kpi.progresso }}%</div>
+      <div class="kpi-card kpi-blue">
+        <div class="kpi-ico">📈</div>
+        <div class="kpi-meta">
+          <div class="kpi-label">% Concluído</div>
+          <div class="kpi-value">{{ kpi.progresso }}%</div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
+{% endif %}
 
 <h3 style="margin: 20px 0 10px 0; color: #666;">📦 Movimentação de Carga (Transferências)</h3>
 <div class="kpi-grid">
@@ -114,7 +117,10 @@
 </div>
 
 
-<div class="grid-2">
+<div class="{% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}grid-2{% else %}grid-1{% endif %}">
+  
+  {# --- ROTAS ATIVAS: RESTRITA PARA MOTOBOY E ADMIN --- #}
+  {% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}
   <div class="card">
     <div class="card-title">
       <h2>Rotas Ativas</h2>
@@ -136,7 +142,9 @@
       {% endfor %}
     </ul>
   </div>
+  {% endif %}
 
+  {# --- ÚLTIMAS TRANSFERÊNCIAS: TODOS VEEM --- #}
   <div class="card">
     <div class="card-title">
       <h2>Últimas Transferências</h2>

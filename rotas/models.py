@@ -118,6 +118,11 @@ class Transferencia(models.Model):
         ("grande", "Grande (Caminhão)"),
     ]
     
+    PORTE_CHOICES = [
+        ('pequeno', 'Pequeno (Motoboy)'),
+        ('grande', 'Grande (Motorista/Carro)'),
+    ]
+    
     rota = models.ForeignKey(
         Rota, 
         on_delete=models.SET_NULL, 
@@ -154,6 +159,14 @@ class Transferencia(models.Model):
     observacoes = models.TextField(blank=True, null=True) # Com "s" no final
     loja_origem = models.ForeignKey(Loja, on_delete=models.PROTECT, related_name="transf_origem_set", null=True, blank=True)
     loja_destino = models.ForeignKey(Loja, on_delete=models.PROTECT, related_name="transf_destino_set", null=True, blank=True)
+    
+    numero_transferencia = models.CharField(max_length=50, verbose_name="Nº da Transferência")
+    porte_carga = models.CharField(
+            max_length=10, 
+            choices=PORTE_CHOICES, 
+            default='pequeno',
+            verbose_name="Porte da Carga"
+        )
 
     # --- Status e Auditoria ---
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
