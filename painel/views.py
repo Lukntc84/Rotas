@@ -358,30 +358,34 @@ def reordenar_paradas(request, rota_id):
 def _is_motoboy(user):
     return user.groups.filter(name="Motoboy").exists()
 
+# painel/views.py
+
 @login_required
 @permission_required("rotas.view_transferencia", raise_exception=True)
 def transferencias_lista(request):
-    # Base: apenas transferências que ainda não estão em rota
+    # Base: notas sem rota. IMPORTANTE: Sua imagem mostra status "em_transito". 
+    # Se ela já estiver "em_transito", ela NÃO aparece nesta lista por causa do filtro abaixo!
     transferencias = Transferencia.objects.filter(rota__isnull=True).order_by('-criado_em')
 
-    # Filtro automático para Motoboys (Ponto 4)
-    if _is_motoboy(request.user):
-        transferencias = transferencias.filter(tamanho_carga="pequeno")
-
-    # Filtros via URL (para o Operador usar no Painel)
     tamanho = request.GET.get('tamanho')
-    status = request.GET.get('status')
+    loja_id = request.GET.get('loja')
     
+    # Filtro de Porte
     if tamanho:
         transferencias = transferencias.filter(tamanho_carga=tamanho)
-    if status:
-        transferencias = transferencias.filter(status=status)
+
+    # Filtro de Loja
+    if loja_id:
+        transferencias = transferencias.filter(loja_destino_id=loja_id)
+
+    # REMOVA OU COMENTE esta linha se quiser que o Admin veja tudo sem restrição automática
+    # if _is_motoboy(request.user) and not request.user.is_staff:
+    #     transferencias = transferencias.filter(tamanho_carga="pequeno")
 
     return render(request, "painel/transferencias_lista.html", {
-            "transferencias": transferencias,
-            "lojas": Loja.objects.filter(ativa=True).order_by('nome'), # ESTA LINHA É ESSENCIAL
-        })
-
+        "transferencias": transferencias,
+        "lojas": Loja.objects.filter(ativa=True).order_by('nome'),
+    })
 @login_required
 @permission_required("rotas.add_transferencia", raise_exception=True)
 def transferencia_nova(request):

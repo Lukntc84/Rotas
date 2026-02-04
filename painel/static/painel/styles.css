@@ -846,3 +846,83 @@ select:focus{
 /* Cores específicas por porte */
 .porte-pequeno { border-left: 4px solid #3498db; } /* Azul para Motoboy */
 .porte-grande { border-left: 4px solid #e67e22; }  /* Laranja para Caminhão */
+
+/* Container da Tabela */
+.table-separacao {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 15px; /* Espaço vertical entre as linhas */
+    table-layout: fixed; /* FORÇA as colunas a respeitarem a largura definida */
+}
+
+/* Cabeçalho */
+.table-separacao th {
+    padding: 10px 20px;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    color: #888;
+    border: none;
+    text-align: center;
+}
+
+/* Células da Tabela */
+.table-separacao td {
+    padding: 25px 20px; /* Aumenta o espaço interno */
+    vertical-align: middle;
+    background-color: #fff;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    
+    /* A BARRA DE SEPARAÇÃO: Adiciona uma linha cinza vertical à direita */
+    border-right: 2px solid #f0f2f5; 
+}
+
+/* Remove a barra vertical apenas da última coluna (Ação) */
+.table-separacao td:last-child {
+    border-right: none !important;
+    border-right-width: 1px solid #eee; /* Fecha o card à direita */
+}
+
+/* Estilo das bordas laterais para fechar o "card" */
+.table-separacao tr td:first-child { 
+    border-left: 1px solid #eee;
+    border-radius: 10px 0 0 10px; 
+}
+.table-separacao tr td:last-child { 
+    border-right: 1px solid #eee;
+    border-radius: 0 10px 10px 0; 
+}
+
+/* DEFINIÇÃO RÍGIDA DE LARGURAS - Aqui você controla o espaçamento */
+.col-transferencia { width: 25%; } /* Mais espaço para o número longo */
+.col-marca { width: 15%; text-align: center; }
+.col-qtd { width: 10%; text-align: center; }
+.col-data { width: 18%; text-align: center; }
+.col-status { width: 15%; text-align: center; }
+.col-acao { width: 17%; text-align: center; }
+
+/* Ajuste para o número da nota não encostar na divisória */
+.text-break-word {
+    display: block;
+    word-break: break-all;
+    font-size: 1rem;
+    padding-right: 15px;
+    color: #212529;
+}
+
+/* Destaque para a Quantidade */
+.col-qtd .badge {
+    font-size: 1.1rem !important;
+    font-weight: 800;
+}
+
+.table-separacao tbody tr:hover {
+    transform: scale(1.01); /* Dá um leve zoom na linha */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+    cursor: pointer;
+}
+.table-separacao td {
+    /* Troque a cor anterior por esta se precisar de mais contraste */
+    border-right: 1px solid #ccd1d6 !important; 
+}
+

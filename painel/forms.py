@@ -40,7 +40,6 @@ class AdicionarLojaRotaForm(forms.Form):
         self.fields["loja"].label_from_instance = lambda obj: f"{obj.nome} - {obj.endereco}"
         
 class TransferenciaForm(forms.ModelForm):
-
     TIPO_CHOICES = [
         ('entrada', 'Entrada'),
         ('saida', 'Saída'),
@@ -78,11 +77,11 @@ class TransferenciaForm(forms.ModelForm):
         ]
         widgets = {
            "quantidade": forms.NumberInput(attrs={
-                "class": "form-control input-bonitinho-qtd" # Adicionamos essa classe
+                "class": "form-control input-bonitinho-qtd"
             }),
             "data": forms.DateInput(attrs={
                     "type": "date", 
-                    "class": "form-control input-bonitinho-data" # Adicionamos essa classe
+                    "class": "form-control input-bonitinho-data"
                 }),
             'numero_transferencia': forms.TextInput(attrs={'class': 'input', 'placeholder': 'Ex: 65456'}),
             'porte_carga': forms.Select(attrs={'class': 'input'}),
@@ -102,15 +101,33 @@ class TransferenciaForm(forms.ModelForm):
             "retirado_por": "Retirado por",
             "numero_documento": "Nº do Documento (NF/Recibo)",
             "observacoes": "Observações",
+            "porte_carga": "Porte da Carga",
         }
-    def __init__(self, *args, **kwargs):
-            user = kwargs.pop('user', None)
-            super().__init__(*args, **kwargs)
 
-            if user and not user.is_staff:
-                # No seu models.py, o related_name é 'loja_perfil'
-                user_loja = getattr(user, 'loja_perfil', None)
-                if user_loja:
-                    self.fields['loja_origem'].queryset = Loja.objects.filter(id=user_loja.id)
-                    self.fields['loja_origem'].initial = user_loja
-                    self.fields['loja_origem'].empty_label = None
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+        if user and not user.is_staff:
+            # Filtra a loja de origem baseada no perfil do usuário logado
+            user_loja = getattr(user, 'loja_perfil', None)
+            if user_loja:
+                self.fields['loja_origem'].queryset = Loja.objects.filter(id=user_loja.id)
+                self.fields['loja_origem'].initial = user_loja
+                self.fields['loja_origem'].empty_label = None
+
+    def save(self, commit=True):
+        """
+        Sobrescrevemos o save para garantir que o campo 'tamanho_carga' 
+        receba o mesmo valor que o usuário selecionou em 'porte_carga'.
+        """
+        instance = super().save(commit=False)
+        
+        # Sincroniza os campos para evitar erro nos filtros da lista
+        porte_selecionado = self.cleaned_data.get('porte_carga')
+        if porte_selecionado:
+            instance.tamanho_carga = porte_selecionado
+            
+        if commit:
+            instance.save()
+        return instance

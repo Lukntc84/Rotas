@@ -5,16 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Montserrat -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
     <link rel="stylesheet" href="{% static 'painel/styles.css' %}" />
     <title>
-      {% block title %}
-        Painel
-      {% endblock %}
+      {% block title %} Painel {% endblock %}
     </title>
   </head>
 
@@ -29,29 +26,38 @@
 
         <nav class="topbar-nav">
           <a class="topbar-link" href="{% url 'painel:home' %}">Painel</a>
+          
           {% if not user.loja_perfil or user.is_staff %}
             <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
           {% endif %}
+
           {% if perms.rotas.add_rota %}
             <a class="topbar-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
           {% endif %}
 
           {% if request.user.is_superuser or request.user.is_staff %}
             <a class="topbar-link" href="{% url 'gestao:usuarios_lista' %}">Usuários</a>
-          {% endif %}
-          {% if request.user.is_superuser or request.user.is_staff %}
             <a class="topbar-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
           {% endif %}
+
+          {% with loja_user=request.user.loja_set.first %}
+          {% if user.is_staff or user.is_superuser or "Loja" in user.groups.all.0.name %}
+              <a class="topbar-link" href="{% url 'gestao:monitor_paletes' %}">
+                  <i class="bi bi-box-seam"></i> Monitor de Paletes
+              </a>
+          {% endif %}
+          {% endwith %}
+
           <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
+          
           {% if perms.rotas.add_transferencia %}
             <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
           {% endif %}
+
           <div class="nav-item" style="position: relative; margin-right: 20px; display: flex; align-items: center;">
             <a href="{% url 'painel:notificacoes_lista' %}" style="text-decoration: none; font-size: 1.5rem; position: relative;">
               🔔{% if request.user.is_authenticated %}
-                {# Usamos uma contagem simples de todas as notificações primeiro #}
                 {% with notificacoes=request.user.notificacoes.all %}
-                  {# Aqui verificamos se existem notificações não lidas de forma segura #}
                   {% if notificacoes %}
                     <span id="notif-badge" class="badge-notify" style="
                         position: absolute;
@@ -64,7 +70,7 @@
                         font-size: 0.7rem;
                         font-weight: bold;
                         border: 2px solid white;
-                        display: none; /* Escondido por padrão, JavaScript ativa se houver unread */
+                        display: none;
                         animation: pulse 2s infinite;"></span>
                   {% endif %}
                 {% endwith %}
@@ -77,13 +83,9 @@
           <div class="userbox">
             <div class="userbox-name">{{ request.user.username }}</div>
             <div class="userbox-role">
-              {% if request.user.is_superuser %}
-                Admin
-              {% elif request.user.groups.first %}
-                {{ request.user.groups.first.name }}
-              {% else %}
-                Usuário
-              {% endif %}
+              {% if request.user.is_superuser %} Admin 
+              {% elif request.user.groups.first %} {{ request.user.groups.first.name }}
+              {% else %} Usuário {% endif %}
             </div>
           </div>
 
@@ -95,36 +97,24 @@
       </div>
     </header>
 
-    <!-- barra de título fora do topbar -->
     <section class="page-titlebar">
       <div class="page-titlebar-inner">
         <div class="page-titlewrap">
           <h1 class="page-title">
-            {% block header_title %}
-              Painel de Rotas
-            {% endblock %}
+            {% block header_title %} Painel de Rotas {% endblock %}
           </h1>
           <p class="page-sub">
-            {% block header_sub %}
-
-            {% endblock %}
+            {% block header_sub %} {% endblock %}
           </p>
         </div>
-
         <div class="page-actions">
-          {% block header_actions %}
-
-          {% endblock %}
+          {% block header_actions %} {% endblock %}
         </div>
       </div>
     </section>
 
     <label class="nav-overlay" for="nav-toggle"></label>
 
-    <!-- overlay -->
-    <label class="nav-overlay" for="nav-toggle"></label>
-
-    <!-- drawer (menu lateral) -->
     <aside class="drawer" aria-label="Menu lateral">
       <div class="drawer-head">
         <div class="drawer-title">Menu</div>
@@ -134,35 +124,37 @@
       <div class="drawer-user">
         <div class="drawer-user-name">{{ request.user.username }}</div>
         <div class="drawer-user-role">
-          {% if request.user.is_superuser %}
-            Admin
-          {% elif request.user.groups.first %}
-            {{ request.user.groups.first.name }}
-          {% else %}
-            Usuário
-          {% endif %}
+          {% if request.user.is_superuser %} Admin 
+          {% elif request.user.groups.first %} {{ request.user.groups.first.name }}
+          {% else %} Usuário {% endif %}
         </div>
       </div>
 
       <nav class="drawer-nav">
-        <a class="topbar-link" href="{% url 'painel:home' %}">Painel</a>
-        <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
+        <a class="drawer-link" href="{% url 'painel:home' %}">Painel</a>
+        
+        {% with loja_user=request.user.loja_set.first %}
+                {% if request.user.is_superuser or request.user.loja_perfil.nome == "CD" %}
+            <a class="drawer-link" href="{% url 'gestao:monitor_paletes' %}">📦 Separação CD</a>
+        {% endif %}
+        {% endwith %}
+
+        <a class="drawer-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
+        
         {% if perms.rotas.add_rota %}
-          <a class="topbar-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
+          <a class="drawer-link" href="{% url 'painel:criar_rota' %}">Nova rota</a>
         {% endif %}
 
         {% if request.user.is_superuser or request.user.is_staff %}
-          <a class="topbar-link" href="{% url 'gestao:usuarios_lista' %}">Usuários</a>
-        {% endif %}
-        {% if request.user.is_superuser or request.user.is_staff %}
-          <a class="topbar-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
-        {% endif %}
-        {% if request.user.is_superuser or request.user.is_staff %}
+          <a class="drawer-link" href="{% url 'gestao:usuarios_lista' %}">Usuários</a>
+          <a class="drawer-link" href="{% url 'gestao:lojas_lista' %}">Lojas</a>
           <a class="drawer-link" href="{% url 'gestao:protocolos_lista' %}">Protocolos</a>
         {% endif %}
-        <a class="topbar-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
+
+        <a class="drawer-link" href="{% url 'painel:transferencias_lista' %}">Transferências</a>
+        
         {% if perms.rotas.add_transferencia %}
-          <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
+          <a class="drawer-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
         {% endif %}
       </nav>
 
@@ -176,35 +168,38 @@
 
     <main class="page">
       <div class="container">
-        {% block content %}
-
-        {% endblock %}
+        {% block content %} {% endblock %}
       </div>
     </main>
   </body>
+  
 </html>
 
 <style>
   @keyframes pulse {
-    0% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.2);
-    }
-    100% {
-      transform: scale(1);
-    }
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  /* Estilo para links no drawer que não estavam definidos */
+  .drawer-link {
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: var(--text-color, #333);
+    font-weight: 600;
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+  .drawer-link:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    color: #007bff;
   }
 </style>
 
 <script>
-    // Como o Django Template é limitado para filtros complexos, 
-    // verificamos as não lidas de forma limpa via script se necessário, 
-    // ou simplesmente mostramos o total se houver alguma.
     document.addEventListener('DOMContentLoaded', function() {
         const badge = document.getElementById('notif-badge');
-        // Se quiser apenas mostrar que existem notificações:
         if (badge) badge.style.display = 'block';
     });
 </script>

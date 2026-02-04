@@ -31,4 +31,6 @@ urlpatterns = [
     path("estoque/saida/nova/", views.nova_saida, name="nova_saida"),
     path("transferencias/", views.transferencias_lista, name="transferencias_lista"),
     path("transferencias/nova/", views.transferencia_nova, name="transferencia_nova"),
+    path('separacao/', views.monitor_paletes_cd, name='monitor_paletes'),
+    path('separacao/loja/<str:loja_nome>/', views.detalhe_separacao_cd, name='detalhe_separacao'),
 ]

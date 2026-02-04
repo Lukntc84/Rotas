@@ -1,70 +1,259 @@
 {% extends 'painel/base.html' %}
 
-{% block header_title %}
-  Painel de Logística
-{% endblock %}
+{% block header_title %}Painel de Logística{% endblock %}
 
 {% block header_actions %}
   {% if perms.rotas.add_transferencia %}
-    <a class="btn btn-primary" href="{% url 'painel:transferencia_nova' %}">+ Nova Transferência</a>
+    <a class="btn btn-primary shadow-sm" href="{% url 'painel:transferencia_nova' %}">
+        <i class="bi bi-plus-lg"></i> Nova Transferência
+    </a>
   {% endif %}
 {% endblock %}
 
 {% block content %}
-  <div class="page-inner">
-    <form method="POST" action="{% url 'painel:criar_rota_motorista' %}">
-      {% csrf_token %}
+<style>
+    /* Grade de Cards com espaçamento otimizado */
+    .dashboard-logistica {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 30px;
+        margin-top: 25px;
+    }
 
-      <div class="card">
-        <div class="card-title">
-          <h2>Transferências Pendentes</h2>
-<div class="filter-group mb-3 d-flex flex-wrap gap-2">
-    <a href="?tamanho=pequeno" class="btn btn-outline-info btn-sm">📦 Apenas Motoboy</a>
-    <a href="?tamanho=grande" class="btn btn-outline-primary btn-sm">🚚 Cargas Grandes</a>
-    <a href="{% url 'painel:transferencias_lista' %}" class="btn btn-link btn-sm text-danger">Limpar Filtros</a>
-    
-    <form method="GET" class="d-inline">
-        <select name="loja" onchange="this.form.submit()" class="form-select form-select-sm d-inline-block w-auto">
-            <option value="">Filtrar por Loja...</option>
-            {% for loja in lojas %}
-                <option value="{{ loja.id }}">{{ loja.nome }}</option>
+    /* Card Limpo e Espaçoso */
+    .card-transferencia {
+        background: #fff;
+        border-radius: 20px;
+        border: 2px solid #edf2f7;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: all 0.25s ease;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+    }
+
+    /* Remove qualquer box aparente do checkbox */
+    .check-input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        appearance: none;
+        margin: 0;
+    }
+
+    .card-transferencia:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e0;
+    }
+
+    /* ESTADO SELECIONADO: Apenas borda e fundo verde suave */
+    .card-transferencia.selected {
+        background-color: #f0fff4 !important;
+        border-color: #38a169 !important;
+    }
+
+    /* Selo de check flutuante (opcional, aparece apenas na seleção) */
+    .card-transferencia.selected::after {
+        content: '✓';
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: #38a169;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        z-index: 5;
+    }
+
+    /* Aumento das margens internas para n ficar espremido */
+    .card-body-custom {
+        padding: 35px 25px; /* Padding generoso */
+    }
+
+    .destino-titulo {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #1a202c;
+        margin-bottom: 25px;
+        text-align: center;
+        border-bottom: 2px solid #f7fafc;
+        padding-bottom: 15px;
+    }
+
+    .info-box {
+        background-color: #f8fafc;
+        border-radius: 15px;
+        padding: 25px; /* Mais espaço interno */
+        margin-bottom: 20px;
+        pointer-events: none;
+    }
+
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+    }
+
+    .info-label { color: #718096; font-weight: 500; }
+    .info-value { color: #2d3748; font-weight: 700; }
+
+    .badge-porte {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-bottom: 15px;
+    }
+    .porte-grande { background: #fffaf0; color: #c05621; border: 1px solid #feebc8; }
+    .porte-pequeno { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
+
+    .btn-detalhes {
+        border-radius: 12px;
+        padding: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+    }
+
+    .filter-bar {
+        background: #fff;
+        padding: 25px;
+        border-radius: 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+</style>
+
+<div class="page-inner">
+    <div class="filter-bar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="?tamanho=pequeno" class="btn btn-outline-info btn-sm rounded-pill px-3">📦 Motoboy</a>
+                <a href="?tamanho=grande" class="btn btn-outline-primary btn-sm rounded-pill px-3">🚚 Carga Grande</a>
+                <a href="{% url 'painel:transferencias_lista' %}" class="btn btn-link btn-sm text-danger text-decoration-none">Limpar Filtros</a>
+                
+                <form method="GET" class="d-inline ms-2">
+                    <select name="loja" onchange="this.form.submit()" class="form-select form-select-sm rounded-pill border-2" style="min-width: 200px;">
+                        <option value="">Filtrar por Loja...</option>
+                        {% for loja in lojas %}
+                            <option value="{{ loja.id }}" {% if request.GET.loja == loja.id|stringformat:"i" %}selected{% endif %}>{{ loja.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </div>
+
+            {% if request.user.groups.all.0.name == 'Motoboy' or user.is_staff %}
+                <button type="button" id="btn-submit-rota" onclick="document.getElementById('form-rota').submit();" class="btn btn-success shadow-sm rounded-pill px-4" disabled>
+                    <i class="bi bi-signpost-split-fill"></i> Criar Rota (0)
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="form-rota" method="POST" action="{% url 'painel:criar_rota_motorista' %}">
+        {% csrf_token %}
+        
+        <div class="dashboard-logistica">
+            {% for t in transferencias %}
+            <div class="card-transferencia" id="card-{{ t.id }}">
+                <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}" 
+                       id="check-{{ t.id }}" class="check-input">
+                
+                <label for="check-{{ t.id }}" class="m-0 w-100 cursor-pointer">
+                    <div class="card-body-custom">
+                        <div class="text-center">
+                            {% if t.tamanho_carga == 'grande' %}
+                                <span class="badge-porte porte-grande">🚚 Carga Grande</span>
+                            {% else %}
+                                <span class="badge-porte porte-pequeno">📦 Motoboy</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="destino-titulo">
+                            {{ t.loja_destino.nome }}
+                        </div>
+
+                        <div class="info-box">
+                            <div class="info-item">
+                                <span class="info-label">Origem:</span>
+                                <span class="info-value">{{ t.loja_origem.nome }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Nº Transf:</span>
+                                <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Produto:</span>
+                                <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Status:</span>
+                                <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </label>
+                
+                <div class="px-4 pb-4" style="position: relative; z-index: 10;">
+                    <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
+                        Visualizar Detalhes
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="w-100 text-center py-5" style="grid-column: 1 / -1;">
+                <div class="card p-5 border-0 shadow-sm rounded-4">
+                    <i class="bi bi-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+                    <p class="text-muted fs-5">Nenhuma transferência disponível para rota.</p>
+                </div>
+            </div>
             {% endfor %}
-        </select>
+        </div>
     </form>
-    
 </div>
 
-          {% if request.user.groups.all.0.name == 'Motoboy' or user.is_staff %}
-            <button type="submit" class="btn btn-info" id="btn-criar-rota">Criar Rota com Selecionados</button>
-          {% endif %}
-        </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.check-input');
+        const btnSubmit = document.getElementById('btn-submit-rota');
 
-        <ul class="list">
-          {% for t in transferencias %}
-            <li class="list-item">
-              <div style="display: flex; align-items: center; gap: 15px;">
-                <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}" style="width: 20px; height: 20px;" />
+        checkboxes.forEach(input => {
+            input.addEventListener('change', function() {
+                const card = document.getElementById('card-' + this.value);
+                
+                if (this.checked) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+                
+                atualizarBotao();
+            });
+        });
 
-                <div>
-                  <div class="userbox-name">{{ t.get_tipo_display }}</div>
-                  <div class="small muted">{{ t.loja.nome }} • {{ t.loja.cidade }}</div>
-                  <div class="small">
-                    Status: <span class="badge">{{ t.status }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="actions">
-                <a class="btn btn-ghost small" href="{% url 'painel:transferencia_detalhe' t.id %}">Detalhes</a>
-              </div>
-            </li>
-          {% empty %}
-            <li class="list-item">
-              <span class="muted">Nenhuma transferência disponível para rota.</span>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
-    </form>
-  </div>
+        function atualizarBotao() {
+            const total = document.querySelectorAll('.check-input:checked').length;
+            if (btnSubmit) {
+                btnSubmit.disabled = total === 0;
+                if(total > 0) {
+                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Iniciar Rota (${total})`;
+                } else {
+                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Criar Rota (0)`;
+                }
+            }
+        }
+    });
+</script>
 {% endblock %}

@@ -1,0 +1,143 @@
+{% extends "painel/base.html" %}
+
+{% block content %}
+<style>
+    /* Estilização da Grade de Cards */
+    .dashboard-paletes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 25px;
+        margin-top: 20px;
+    }
+
+    /* O Card da Loja */
+    .card-loja-logistica {
+        background-color: #ffffff !important;
+        border-radius: 16px !important;
+        border: none !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-loja-logistica:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12) !important;
+    }
+
+    .card-loja-body {
+        padding: 30px !important;
+        text-align: center;
+    }
+
+    /* Título da Loja */
+    .loja-titulo {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #212529;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Bloco de Informação com Divisória Interna */
+    .info-container {
+        background-color: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .info-label {
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        color: #777;
+        font-weight: 600;
+    }
+
+    .info-valor {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #007bff;
+    }
+
+    /* Botão Estilizado */
+    .btn-logistica {
+        background-color: #007bff !important;
+        border: none !important;
+        padding: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-radius: 10px !important;
+        transition: background 0.2s;
+    }
+
+    .btn-logistica:hover {
+        background-color: #0056b3 !important;
+    }
+
+    .badge-modo {
+        padding: 8px 16px;
+        border-radius: 50px;
+        font-weight: 600;
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold"><i class="bi bi-box-seam me-2"></i>Monitor de Separação (CD)</h2>
+            <p class="text-muted mb-0">Gerencie os paletes físicos organizados por loja no galpão.</p>
+        </div>
+        <div>
+            <span class="badge bg-primary badge-modo shadow-sm">MODO LOGÍSTICA</span>
+        </div>
+    </div>
+    
+    <hr class="mb-4">
+
+    <div class="dashboard-paletes">
+        {% for p in paletes %}
+        <div class="card-loja-logistica">
+            <div class="card-loja-body">
+                
+                <div class="loja-titulo">
+                    <span>🏪</span> {{ p.nome_loja|default:"Sem Destino" }}
+                </div>
+                
+                <div class="info-container">
+                    <span class="info-label">Transferências Pendentes</span>
+                    <span class="info-valor">{{ p.total_notas }}</span>
+                </div>
+                
+                {% if p.nome_loja %}
+                    <a href="{% url 'gestao:detalhe_separacao' p.nome_loja %}" class="btn btn-primary btn-logistica w-100 shadow-sm">
+                       Ver Notas Fiscais
+                    </a>
+                {% else %}
+                    <button disabled class="btn btn-secondary w-100 py-2 border-radius-10">
+                        Loja não identificada
+                    </button>
+                {% endif %}
+                
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="card border-0 shadow-sm p-5" style="border-radius: 15px;">
+                <h4 class="text-muted">Nenhum palete em separação no momento.</h4>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock content %}

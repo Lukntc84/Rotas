@@ -16,6 +16,7 @@ from rotas.models import Loja, Protocolo
 from rotas.models import MovimentoEstoque, Transferencia, Loja, Protocolo
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count, F
 
 User = get_user_model()
 
@@ -383,3 +384,52 @@ def transferencia_create(request):
         form = TransferenciaForm(user=request.user)
     
     return render(request, "painel/transferencia_form.html", {"form": form})
+
+@login_required
+def monitor_paletes_cd(request):
+    # Nova trava baseada em Grupos, já que o vínculo de Loja está oculto no banco
+    is_operador = request.user.groups.filter(name='Loja').exists()
+    
+    if not (request.user.is_staff or is_operador):
+        return redirect('painel:home')
+
+    paletes = (
+        Transferencia.objects.filter(
+            status='pendente',
+            loja_origem__nome__icontains="CD"
+        )
+        .values('loja_destino__nome')
+        .annotate(
+            total_notas=Count('id'),
+            nome_loja=F('loja_destino__nome')
+        )
+        .order_by('loja_destino__nome')
+    )
+    return render(request, 'gestao/monitor_paletes.html', {'paletes': paletes})
+
+@login_required
+def detalhe_separacao_cd(request, loja_nome):
+    # 1. Busca a loja de destino
+    loja = get_object_or_404(Loja, nome=loja_nome)
+    
+    # 2. O FILTRO DEVE SER IGUAL AO DO MONITOR:
+    # Destino é a loja clicada E origem contém "CD"
+    notas = Transferencia.objects.filter(
+        loja_destino=loja,
+        loja_origem__nome__icontains="CD", # Filtro sincronizado com o monitor
+        status='pendente'
+    ).order_by('-id')
+    
+    # Lógica do botão confirmar
+    if request.method == "POST":
+        transferencia_id = request.POST.get("transferencia_id")
+        item = get_object_or_404(Transferencia, id=transferencia_id)
+        item.status = 'em_transito'
+        item.save()
+        messages.success(request, f"Transferência {item.numero_transferencia} confirmada!")
+        return redirect('gestao:detalhe_separacao', loja_nome=loja.nome)
+
+    return render(request, 'gestao/detalhe_separacao.html', {
+        'loja': loja,
+        'notas': notas
+    })
