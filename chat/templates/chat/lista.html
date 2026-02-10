@@ -1,0 +1,344 @@
+{% extends 'painel/base.html' %}
+
+{% block header_title %} Chat Interno {% endblock %}
+{% block header_sub %} Comunique-se com a equipe do CD e Lojas {% endblock %}
+
+{% block content %}
+<style>
+    /* Ajustes de Layout Base */
+    .chat-wrapper {
+        display: grid; 
+        grid-template-columns: 300px 1fr; 
+        gap: 20px; 
+        align-items: start;
+    }
+
+    /* Estilo do Menu de Opções */
+    .chat-menu {
+        display: none;
+        position: absolute;
+        right: 5px;
+        top: 25px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        min-width: 100px;
+        overflow: hidden;
+    }
+
+    .chat-menu div {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        color: #333;
+        cursor: pointer;
+    }
+
+    .chat-menu div:hover { background-color: #f8f9fa; }
+
+    .btn-opcoes {
+        cursor: pointer;
+        padding: 0 5px;
+        font-size: 1.2rem;
+        line-height: 1;
+        color: inherit;
+        opacity: 0.7;
+    }
+
+    /* Responsividade Mobile */
+    @media (max-width: 768px) {
+        .chat-wrapper {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        /* Força o chat a ficar oculto se tiver d-none */
+        #janela-chat.d-none {
+            display: none !important;
+        }
+
+        #janela-chat {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100dvh !important;
+            z-index: 9999;
+            border-radius: 0;
+            margin: 0;
+            background: #f1f7ff;
+            display: flex; 
+        }
+
+        .sidebar-hidden-mobile {
+            display: none !important;
+        }
+
+        #chat-vazio { display: none !important; }
+
+        .chat-input-container {
+            padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+            background: white;
+        }
+
+        .btn-voltar { display: block !important; }
+    }
+
+    .btn-voltar {
+        display: none;
+        margin-right: 15px;
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: #007bff;
+    }
+</style>
+
+<div class="chat-wrapper">
+    <div id="sidebar-contatos" class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 15px; border-bottom: 1px solid #eee; font-weight: bold; background: #fff;">
+            Contatos
+        </div>
+        <div id="lista-contatos" style="max-height: 500px; overflow-y: auto;">
+            {% include 'chat/contatos_fragment.html' %}
+        </div>
+    </div>
+
+    <div id="janela-chat" class="card d-none" style="padding: 0; flex-direction: column; height: 600px;">
+        <div style="padding: 15px; border-bottom: 1px solid #eee; background: #fff; display: flex; align-items: center;">
+            <span class="btn-voltar" onclick="fecharChatMobile()">
+                <i class="fas fa-arrow-left"></i>
+            </span>
+            <div style="flex-grow: 1;">
+                <strong id="chat-nome-usuario" style="color: #007bff;">---</strong>
+                <div style="font-size: 0.65rem; color: #28a745;">Online</div>
+            </div>
+        </div>
+
+        <div id="chat-box" style="flex-grow: 1; padding: 20px; overflow-y: auto; background-color: #f1f7ff; display: flex; flex-direction: column;">
+        </div>
+
+        <div class="chat-input-container" style="display: flex; align-items: flex-end; gap: 8px; padding: 12px; background: white; border-top: 1px solid #eee;">
+            <label for="file-input" style="cursor: pointer; padding: 8px; color: #666;">
+                <i id="clip-icon" class="fas fa-paperclip" style="font-size: 1.2rem;"></i>
+            </label>
+            <input type="file" id="file-input" style="display: none;">
+
+            <textarea id="chat-input" placeholder="Escreva..." 
+                style="flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 8px 15px; resize: none; max-height: 80px; outline: none;" 
+                rows="1"></textarea>
+            
+            <button id="btn-mic" class="btn btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-microphone"></i>
+            </button>
+
+            <button onclick="enviar()" class="btn btn-primary" style="border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+        <div id="status-gravacao" style="display:none; text-align: center; color: red; font-size: 0.7rem; padding-bottom: 10px; background: white;">🔴 Gravando áudio...</div>
+    </div>
+
+    <div id="chat-vazio" class="card" style="height: 600px; display: flex; align-items: center; justify-content: center; text-align: center;">
+        <div style="color: #ccc;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">💬</div>
+            <p style="font-weight: 600;">Selecione um contato para conversar</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    let chatInterval = null;
+    let destinatarioAtivo = null;
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioTocando = false; // TRAVA PARA NÃO CORTAR O ÁUDIO
+
+    function abrirChat(id, nome) {
+        destinatarioAtivo = id;
+        document.getElementById('chat-vazio').style.display = 'none';
+        const janela = document.getElementById('janela-chat');
+        janela.classList.remove('d-none');
+        janela.style.display = 'flex';
+        document.getElementById('chat-nome-usuario').innerText = nome;
+
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar-contatos').classList.add('sidebar-hidden-mobile');
+            window.scrollTo(0, 0);
+        }
+
+        if (chatInterval) clearInterval(chatInterval);
+        carregarMensagens();
+        chatInterval = setInterval(carregarMensagens, 3000);
+    }
+
+    function fecharChatMobile() {
+        const janela = document.getElementById('janela-chat');
+        janela.classList.add('d-none');
+        janela.style.display = 'none';
+        document.getElementById('sidebar-contatos').classList.remove('sidebar-hidden-mobile');
+        if (chatInterval) clearInterval(chatInterval);
+        destinatarioAtivo = null;
+    }
+
+    function toggleMenu(id) {
+        event.stopPropagation();
+        const menu = document.getElementById(`menu-${id}`);
+        const isVisible = menu.style.display === 'block';
+        document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+        menu.style.display = isVisible ? 'none' : 'block';
+    }
+
+    function carregarMensagens() {
+        // Se o usuário estiver ouvindo um áudio, cancelamos a atualização para não travar
+        if (!destinatarioAtivo || audioTocando) return;
+
+        fetch(`/chat/buscar/${destinatarioAtivo}/`)
+            .then(res => res.json())
+            .then(data => {
+                const box = document.getElementById('chat-box');
+                const meuId = "{{ request.user.id }}";
+                
+                // Opção 2 integrada: Só atualiza o DOM se houver nova mensagem ou mudança
+                const novoConteudoHtml = data.map(m => {
+                    const souEu = String(m.remetente_id) === String(meuId);
+                    let anexoHtml = '';
+                    if (m.arquivo_url) {
+                        const ehImagem = /\.(jpeg|jpg|gif|png|webp)$/i.test(m.arquivo_url);
+                        const ehAudio = /\.(webm|wav|mp3|ogg|m4a)$/i.test(m.arquivo_url);
+                        if (ehImagem) {
+                            anexoHtml = `<img src="${m.arquivo_url}" style="max-width: 100%; border-radius: 10px; margin-top: 8px; cursor:pointer;" onclick="window.open('${m.arquivo_url}')">`;
+                        } else if (ehAudio) {
+                            // Eventos onplay e onended para controlar a atualização
+                            anexoHtml = `<audio controls onplay="audioTocando = true" onpause="audioTocando = false" onended="audioTocando = false" style="width: 100%; margin-top: 8px;">
+                                            <source src="${m.arquivo_url}">
+                                         </audio>`;
+                        } else {
+                            anexoHtml = `<div style="margin-top: 8px;"><a href="${m.arquivo_url}" target="_blank" style="color: ${souEu ? '#fff' : '#007bff'}; font-size: 0.8rem;"><i class="fas fa-file-download"></i> Arquivo</a></div>`;
+                        }
+                    }
+
+                    const menuBtn = souEu ? `
+                        <div style="position: absolute; right: 8px; top: 5px;">
+                            <span class="btn-opcoes" onclick="toggleMenu(${m.id})">⋮</span>
+                            <div id="menu-${m.id}" class="chat-menu">
+                                <div onclick="prepararEdicao(${m.id}, '${m.conteudo}')">Editar</div>
+                                <div onclick="deletarMsg(${m.id})" style="color: red;">Excluir</div>
+                            </div>
+                        </div>` : '';
+
+                    return `
+                        <div style="display: flex; justify-content: ${souEu ? 'flex-end' : 'flex-start'}; margin-bottom: 15px; position: relative;">
+                            <div style="max-width: 85%; padding: 10px 14px; border-radius: 15px; background: ${souEu ? '#007bff' : 'white'}; color: ${souEu ? 'white' : '#333'}; box-shadow: 0 1px 3px rgba(0,0,0,0.1); position: relative; padding-right: ${souEu ? '25px' : '14px'};">
+                                ${menuBtn}
+                                <small style="opacity: 0.7; font-size: 0.65rem; display: block;">${m.remetente__username}</small>
+                                <div style="word-break: break-word;">${m.conteudo}</div>
+                                ${anexoHtml}
+                            </div>
+                        </div>`;
+                }).join('');
+
+                if (box.innerHTML !== novoConteudoHtml) {
+                    box.innerHTML = novoConteudoHtml;
+                    box.scrollTop = box.scrollHeight;
+                }
+            });
+    }
+
+    function enviar() {
+        const input = document.getElementById('chat-input');
+        const fileInput = document.getElementById('file-input');
+        if (!destinatarioAtivo || (!input.value.trim() && !fileInput.files[0])) return;
+
+        const formData = new FormData();
+        formData.append('destinatario_id', destinatarioAtivo);
+        formData.append('conteudo', input.value);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        if (fileInput.files[0]) formData.append('arquivo', fileInput.files[0]);
+
+        fetch(`/chat/enviar/`, { method: 'POST', body: formData })
+        .then(res => {
+            if (res.ok) {
+                input.value = '';
+                fileInput.value = '';
+                input.style.height = "auto";
+                carregarMensagens();
+            }
+        });
+    }
+
+    // --- LOGICA DO MICROFONE ---
+    document.getElementById('btn-mic').addEventListener('click', function() {
+        const btn = this;
+        const status = document.getElementById('status-gravacao');
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                audioChunks = [];
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: mimeType });
+                    const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
+                    const fd = new FormData();
+                    fd.append('destinatario_id', destinatarioAtivo);
+                    fd.append('conteudo', '🎤 Áudio');
+                    fd.append('arquivo', new File([blob], `audio.${ext}`));
+                    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+                    fetch('/chat/enviar/', { method: 'POST', body: fd }).then(() => carregarMensagens());
+                    stream.getTracks().forEach(t => t.stop());
+                };
+
+                mediaRecorder.start();
+                btn.classList.replace('btn-secondary', 'btn-danger');
+                status.style.display = 'block';
+            } else {
+                mediaRecorder.stop();
+                btn.classList.replace('btn-danger', 'btn-secondary');
+                status.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            alert("Erro no microfone: " + err.name);
+        });
+    });
+
+    function prepararEdicao(id, conteudo) {
+        const novo = prompt("Editar mensagem:", conteudo);
+        if (novo && novo !== conteudo) {
+            const fd = new FormData();
+            fd.append('conteudo', novo);
+            fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            fetch(`/chat/editar/${id}/`, { method: 'POST', body: fd }).then(() => carregarMensagens());
+        }
+    }
+
+    function deletarMsg(id) {
+        if (confirm("Excluir mensagem?")) {
+            const fd = new FormData();
+            fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            fetch(`/chat/excluir/${id}/`, { method: 'POST', body: fd }).then(() => carregarMensagens());
+        }
+    }
+
+    // Fechar menu ao clicar fora
+    window.onclick = function() {
+        document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+    }
+
+    document.getElementById('chat-input').addEventListener("input", function() {
+        this.style.height = "auto";
+        this.style.height = (this.scrollHeight) + "px";
+    });
+
+    // CORREÇÃO INICIAL MOBILE: Garante que comece nos contatos
+    window.addEventListener('load', () => {
+        if (window.innerWidth <= 768) {
+            fecharChatMobile();
+        }
+    });
+</script>
+{% endblock %}

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,11 +26,14 @@ SECRET_KEY = 'django-insecure-8cqxb0$1*v0$fwo*duoh^fftt!vx05e%-e=pxyqeau44+cv_43
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# Adicione o domínio do ngrok (sem o https://)
+ALLOWED_HOSTS = ['preflagellated-ivana-inflexibly.ngrok-free.dev', 'localhost', '127.0.0.1', '172.61.4.180']
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 BACKEND_DOMAIN = '172.61.4.180:8000'
 DOMAIN_NAME = '172.61.4.180:8000'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Application definition
 
@@ -43,6 +47,7 @@ INSTALLED_APPS = [
     "rotas",
     "painel",
     "gestao",
+    'chat',
 ]
 
 LOGIN_URL = "/login/"
@@ -80,6 +85,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'chat.context_processors.contador_mensagens',
             ],
         },
     },
