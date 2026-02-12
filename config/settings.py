@@ -26,8 +26,8 @@ SECRET_KEY = 'django-insecure-8cqxb0$1*v0$fwo*duoh^fftt!vx05e%-e=pxyqeau44+cv_43
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# Adicione o domínio do ngrok (sem o https://)
-ALLOWED_HOSTS = ['preflagellated-ivana-inflexibly.ngrok-free.dev', 'localhost', '127.0.0.1', '172.61.4.180']
+ALLOWED_HOSTS = ['*', 'preflagellated-ivana-inflexibly.ngrok-free.dev']
+CSRF_TRUSTED_ORIGINS = ['https://preflagellated-ivana-inflexibly.ngrok-free.dev']
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 BACKEND_DOMAIN = '172.61.4.180:8000'
@@ -35,9 +35,20 @@ DOMAIN_NAME = '172.61.4.180:8000'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
+
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,6 +69,7 @@ EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
+ASGI_APPLICATION = 'config.asgi.application'
 
 EMAIL_HOST_USER = "lauro.os84@gmail.com"
 EMAIL_HOST_PASSWORD = "zewb rwjz bywb dvwp"

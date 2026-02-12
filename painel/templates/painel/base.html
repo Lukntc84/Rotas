@@ -44,7 +44,7 @@
 
           {% if user.is_staff or user.is_superuser or "Loja" in user.groups.all.0.name %}
               <a class="topbar-link" href="{% url 'gestao:monitor_paletes' %}">
-                  <i class="bi bi-box-seam"></i> Monitor de Paletes
+                   Monitor de Paletes
               </a>
           {% endif %}
 

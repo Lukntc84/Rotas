@@ -6,7 +6,8 @@ from .models import Mensagem
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.db.models.functions import Greatest
-
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from chat import models
 
 @login_required
@@ -28,20 +29,17 @@ def chat_lista(request):
 @login_required
 def buscar_mensagens(request, destinatario_id):
     try:
-        # CORREÇÃO AQUI: Mudamos 'data_envio' para 'timestamp'
         mensagens = Mensagem.objects.filter(
             (Q(remetente=request.user) & Q(destinatario_id=destinatario_id)) |
             (Q(remetente_id=destinatario_id) & Q(destinatario=request.user))
-        ).order_by('timestamp') # Campo correto conforme o seu models.py
-
+        ).order_by('timestamp')
+            
         data = []
         for m in mensagens:
             url_arquivo = None
             if m.arquivo:
-                try:
-                    url_arquivo = m.arquivo.url
-                except:
-                    url_arquivo = None
+                try: url_arquivo = m.arquivo.url
+                except: url_arquivo = None
 
             data.append({
                 'id': m.id,
@@ -50,12 +48,10 @@ def buscar_mensagens(request, destinatario_id):
                 'remetente__username': m.remetente.username,
                 'editada': getattr(m, 'editada', False),
                 'arquivo_url': url_arquivo,
+                'timestamp': m.timestamp.isoformat(), # ADICIONADO PARA O HORÁRIO FUNCIONAR
             })
-        
         return JsonResponse(data, safe=False)
-        
     except Exception as e:
-        print(f"ERRO REAL NA VIEW BUSCAR: {e}")
         return JsonResponse({'error': str(e)}, status=500)
     
 @login_required
@@ -67,12 +63,39 @@ def enviar_mensagem(request):
 
         if destinatario_id:
             destinatario = get_object_or_404(User, id=destinatario_id)
-            Mensagem.objects.create(
+            
+            # 1. Salva no Banco de Dados
+            mensagem = Mensagem.objects.create(
                 remetente=request.user,
                 destinatario=destinatario,
                 conteudo=conteudo,
                 arquivo=arquivo
             )
+
+            # 2. Prepara os dados para o Websocket
+            channel_layer = get_channel_layer()
+            data_payload = {
+                'id': mensagem.id,
+                'conteudo': mensagem.conteudo,
+                'remetente_id': request.user.id,
+                'destinatario_id': destinatario.id,
+                'remetente__username': request.user.username,
+                'arquivo_url': mensagem.arquivo.url if mensagem.arquivo else None,
+                'horario': mensagem.timestamp.strftime('%H:%M'),
+            }
+
+            # 3. Envia para o grupo do DESTINATÁRIO (para o contato subir no topo dele)
+            async_to_sync(channel_layer.group_send)(
+                f'user_{destinatario.id}',
+                {'type': 'chat_message', 'message': data_payload}
+            )
+
+            # 4. Envia para o grupo do REMETENTE (para o contato subir no seu próprio topo)
+            async_to_sync(channel_layer.group_send)(
+                f'user_{request.user.id}',
+                {'type': 'chat_message', 'message': data_payload}
+            )
+
             return JsonResponse({'status': 'sucesso'})
     return JsonResponse({'status': 'erro'}, status=400)
 
@@ -141,3 +164,19 @@ def editar_mensagem(request, mensagem_id):
             mensagem.save()
             return JsonResponse({'status': 'sucesso'})
     return JsonResponse({'status': 'erro'}, status=400)
+
+@login_required
+def marcar_como_lida(request, user_id):
+    # Marca como lidas todas as mensagens enviadas pelo 'user_id' para o usuário logado
+    Mensagem.objects.filter(
+        remetente_id=user_id, 
+        destinatario=request.user, 
+        lida=False
+    ).update(lida=True)
+    
+    return JsonResponse({'status': 'ok'})
+
+@login_required
+def chat_janela_mobile(request, destinatario_id):
+    destinatario = get_object_or_404(User, id=destinatario_id)
+    return render(request, 'chat/chat_mobile.html', {'destinatario': destinatario})

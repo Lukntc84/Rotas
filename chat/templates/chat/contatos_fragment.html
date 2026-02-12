@@ -1,5 +1,6 @@
 {% for usuario in usuarios %}
-<div onclick="abrirChat('{{ usuario.id }}', '{{ usuario.username }}') " 
+<div id="contato-{{ usuario.id }}" 
+     onclick="abrirChat('{{ usuario.id }}', '{{ usuario.username }}') " 
      style="padding: 15px; cursor: pointer; border-bottom: 1px solid #f9f9f9; position: relative; transition: 0.3s;">
     <div style="display: flex; align-items: center; justify-content: space-between;">
         <div style="display: flex; align-items: center;">
@@ -12,7 +13,7 @@
             </div>
         </div>
         {% if usuario.nao_lidas > 0 %}
-        <span style="background: #e53e3e; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; animation: pulse 2s infinite;">
+        <span id="notificacao-{{ usuario.id }}" style="background: #e53e3e; color: white; border-radius: 50%; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; animation: pulse 2s infinite;">
             {{ usuario.nao_lidas }}
         </span>
         {% endif %}

@@ -926,3 +926,11 @@ select:focus{
     border-right: 1px solid #ccd1d6 !important; 
 }
 
+/* Impede o zoom no mobile ao focar nos campos */
+@media screen and (max-width: 768px) {
+    #chat-input, 
+    #input-pesquisa, 
+    .chat-input-container textarea {
+        font-size: 16px !important; /* Tamanho mínimo para o iOS não dar zoom */
+    }
+}
