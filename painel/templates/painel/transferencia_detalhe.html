@@ -57,12 +57,13 @@
 <div class="card">
   <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="margin:0;">Detalhes do Pedido</h2>
-    <span class="badge-status 
-      {% if t.status == 'confirmada' %}badge-success
-      {% elif t.status == 'em_transito' %}badge-info
-      {% else %}badge-warning{% endif %}">
-      {{ t.status|upper }}
-    </span>
+  <span class="badge-status 
+    {% if t.status == 'confirmada' %}badge-success
+    {% elif t.status == 'aguardando_cd' %}badge-warning
+    {% elif t.status == 'em_transito' %}badge-info
+    {% else %}badge-warning{% endif %}">
+    {{ t.status|upper }}
+  </span>
   </div>
 
   <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">

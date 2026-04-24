@@ -16,5 +16,5 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/painel/", permanent=False)),
     path("", include("django.contrib.auth.urls")),  # /password_reset/ etc
     path("accounts/", include("django.contrib.auth.urls")),
-    path('chat/', include('chat.urls')),
+    path("chat/", include(("chat.urls", "chat"), namespace="chat")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,299 +1,572 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>{{ destinatario.username }}</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://unpkg.com/wavesurfer.js@7"></script>
-    <style>
-        /* Reset total para garantir que ocupamos a tela certa */
-        html { height: 100%; overscroll-behavior: none; }
-        body { 
-            margin: 0; padding: 0; 
-            width: 100%; height: 100%; 
-            background: #f1f7ff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            overflow: hidden; /* Impede scroll no body, apenas na div interna */
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Chat Mobile: {{ destinatario.username }}</title>
 
-        /* Container Principal que será redimensionado pelo JS */
-        #mobile-wrapper {
-            display: flex; 
-            flex-direction: column;
-            height: 100%; /* Fallback */
-            width: 100%;
-            position: absolute; /* Absolute funciona melhor com teclado que Fixed */
-            top: 0; left: 0; bottom: 0; right: 0;
-        }
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
-        /* Header Fixo */
-        .chat-header {
-            flex: 0 0 auto; /* Não encolhe */
-            padding: 10px 15px; 
-            background: #fff; 
-            border-bottom: 1px solid #eee;
-            display: flex; align-items: center; gap: 15px; 
-            height: 60px;
-        }
-        .chat-header a { color: #007bff; text-decoration: none; font-size: 1.2rem; }
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #f1f7ff;
+      font-family: -apple-system, system-ui, sans-serif;
+      overflow: hidden;
+    }
 
-        /* Área de Mensagens (Scrollável) */
-        #chat-box {
-            flex: 1 1 auto; /* Ocupa o espaço restante */
-            overflow-y: scroll; /* Scroll forçado */
-            padding: 15px; 
-            display: flex; 
-            flex-direction: column;
-            background-color: #f1f7ff;
-            -webkit-overflow-scrolling: touch; /* Suavidade no iOS */
-        }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 
-        /* Área de Input Fixa na base do wrapper */
-        .input-container {
-            flex: 0 0 auto; /* Não encolhe */
-            background: #fff; 
-            border-top: 1px solid #eee;
-            padding: 8px; 
-            width: 100%;
-            /* Padding bottom seguro para iPhone X+ */
-            padding-bottom: max(8px, env(safe-area-inset-bottom));
-        }
+    /* ===== LAYOUT IGUAL AO LISTA.HTML (janela-chat) ===== */
+    .page {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background: #f1f7ff;
+    }
 
-        .input-row { display: flex; align-items: flex-end; gap: 8px; }
+    .chat-header {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      min-height: 60px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
 
-        textarea {
-            flex: 1; 
-            border: 1px solid #ddd; border-radius: 20px;
-            padding: 10px 15px; 
-            outline: none; 
-            font-size: 16px !important; /* CRUCIAL: 16px evita zoom no iOS */
-            max-height: 120px; 
-            resize: none;
-            background: #f9f9f9;
-        }
+    .chat-header a {
+      color: #007bff;
+      text-decoration: none;
+      font-size: 1.1rem;
+    }
 
-        /* Seus estilos de balão e áudio mantidos */
-        #indicador-anexo { display: none; padding: 5px 10px; font-size: 0.8rem; background: #eef6ff; justify-content: space-between; border-top: 1px solid #ddd; }
-        .msg-bubble { max-width: 85%; padding: 10px 14px; border-radius: 15px; margin-bottom: 10px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word;}
-        .msg-mine { align-self: flex-end; background: #007bff; color: white; border-bottom-right-radius: 2px; }
-        .msg-theirs { align-self: flex-start; background: white; color: #333; border-bottom-left-radius: 2px; }
-        .msg-horario { font-size: 0.6rem; opacity: 0.7; text-align: right; margin-top: 4px; display: block; }
-        .waveform-container { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 10px; min-width: 180px; }
-        .play-btn { background: #fff; color: #007bff; border: none; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
-        .btn-action { border: none; background: none; color: #007bff; font-size: 1.4rem; padding: 5px; cursor: pointer; }
-    </style>
+    .chat-header strong {
+      color: #007bff;
+    }
+
+    .chat-header .online {
+      font-size: 0.65rem;
+      color: #28a745;
+      margin-top: 2px;
+    }
+
+    #chat-box {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background-color: #f1f7ff;
+      display: flex;
+      flex-direction: column;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Indicador de anexo igual */
+    #indicador-anexo {
+      display: none;
+      background: #eef6ff;
+      padding: 8px 15px;
+      font-size: 0.8rem;
+      border-top: 1px solid #d1e7ff;
+      color: #0056b3;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #status-gravacao {
+      display: none;
+      text-align: center;
+      background: #fff1f1;
+      padding: 8px;
+      flex-shrink: 0;
+    }
+
+    #status-gravacao .dot {
+      color: red;
+      animation: blink 1s infinite;
+      margin-right: 6px;
+    }
+
+    .chat-input-container {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding: 12px;
+      background: #fff;
+      border-top: 1px solid #eee;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+      flex-shrink: 0;
+    }
+
+    /* evitar zoom iOS */
+    #chat-input { font-size: 16px !important; }
+
+    /* ===== MENSAGENS (mesma ideia do lista.html) ===== */
+    .msg-container { display: flex; flex-direction: column; position: relative; }
+    .msg-horario { font-size: 0.65rem; opacity: 0.7; align-self: flex-end; margin-top: 2px; margin-left: 10px; }
+
+    .btn-opcoes { cursor: pointer; padding: 0 5px; font-size: 1.2rem; opacity: 0.7; }
+    .chat-menu {
+      display: none;
+      position: absolute;
+      right: 5px;
+      top: 25px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      z-index: 3000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      min-width: 110px;
+      overflow: hidden;
+    }
+    .chat-menu div { padding: 10px 12px; font-size: 0.85rem; cursor: pointer; color: #333; }
+    .chat-menu div:hover { background: #f8f9fa; }
+
+    /* Player de Áudio igual */
+    .waveform-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,0,0,0.05);
+      padding: 8px 12px;
+      border-radius: 12px;
+      margin-top: 5px;
+      min-width: 220px;
+    }
+    .play-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+  </style>
 </head>
-<body>
 
-<div id="mobile-wrapper">
+<body>
+  <div class="page">
+
+    <!-- HEADER (igual ao lista) -->
     <div class="chat-header">
-        <a href="{% url 'chat_lista' %}"><i class="fas fa-arrow-left"></i></a>
-        <div style="display:flex; flex-direction:column; line-height: 1.2;">
-            <strong>{{ destinatario.username }}</strong>
-            <small style="font-size: 0.75rem; color: #28a745;">Online</small>
-        </div>
+      <a href="{% url 'chat:lista' %}">
+        <i class="fas fa-arrow-left"></i>
+      </a>
+
+      <div style="flex-grow: 1;">
+        <strong id="chat-nome-usuario">{{ destinatario.username }}</strong>
+        <div class="online">Online</div>
+      </div>
     </div>
 
+    <!-- CHAT BOX -->
     <div id="chat-box"></div>
 
-    <div id="status-gravacao" style="display:none; text-align: center; background: #fff1f1; padding: 5px; color: red;">
-        <span>● Gravando: </span> <span id="timer-gravacao">00:00</span>
-    </div>
+    <!-- INDICADOR ANEXO (igual ao lista) -->
     <div id="indicador-anexo">
-        <span id="nome-arquivo" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 80%;"></span>
-        <i class="fas fa-times" onclick="removerAnexo()" style="color:red; padding:5px;"></i>
+      <span><i class="fas fa-file-alt"></i> <span id="nome-arquivo"></span></span>
+      <i class="fas fa-times" onclick="removerAnexo()" style="cursor:pointer; color:red; padding: 5px;"></i>
     </div>
 
-    <div class="input-container">
-        <div class="input-row">
-            <label for="file-input" class="btn-action"><i class="fas fa-paperclip"></i></label>
-            <input type="file" id="file-input" style="display: none;">
-            
-            <textarea id="chat-input" rows="1" placeholder="Mensagem..."></textarea>
-            
-            <button id="btn-mic" class="btn-action" style="color: #666;"><i class="fas fa-microphone"></i></button>
-            <button onclick="enviar()" class="btn-action"><i class="fas fa-paper-plane"></i></button>
-        </div>
+    <!-- STATUS GRAVAÇÃO (igual ao lista) -->
+    <div id="status-gravacao">
+      <span class="dot">● Gravação:</span>
+      <span id="timer-gravacao">00:00</span>
     </div>
-</div>
 
-<script>
-    // --- LÓGICA DE REDIMENSIONAMENTO DO TECLADO ---
-    // Esta é a parte que faz a mágica no iOS e Android
-    const wrapper = document.getElementById('mobile-wrapper');
-    const chatBox = document.getElementById('chat-box');
-    const inputArea = document.getElementById('chat-input');
+    <!-- INPUT (igual ao lista) -->
+    <div class="chat-input-container">
+      <label for="file-input" style="cursor: pointer; padding: 8px; color: #666;">
+        <i class="fas fa-paperclip"></i>
+      </label>
+      <input type="file" id="file-input" style="display: none;">
 
-    function resizeVisualViewport() {
-        if (!window.visualViewport) return;
-        
-        // Define a altura do wrapper para ser EXATAMENTE a altura visível (sem teclado)
-        wrapper.style.height = window.visualViewport.height + 'px';
-        
-        // Garante que o scroll vá para o fundo quando redimensionar
-        setTimeout(() => {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 100);
-    }
+      <textarea
+        id="chat-input"
+        onkeydown="verificarEnter(event)"
+        placeholder="Escreva..."
+        style="flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 8px 15px; resize: none; outline: none; max-height: 100px;"
+        rows="1"></textarea>
 
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', resizeVisualViewport);
-        window.visualViewport.addEventListener('scroll', resizeVisualViewport);
-    }
+      <button id="btn-mic" class="btn btn-secondary" style="border-radius: 50%; width: 40px; height: 40px; border: 1px solid #ddd; background:#f8f9fa;">
+        <i class="fas fa-microphone"></i>
+      </button>
 
-    // Workaround extra para garantir que o input fique visível ao focar
-    inputArea.addEventListener('focus', () => {
-        setTimeout(() => {
-            window.scrollTo(0, 0); // Reseta scroll da janela
-            chatBox.scrollTop = chatBox.scrollHeight; // Rola o chat
-        }, 300);
-    });
+      <button onclick="enviar()" class="btn btn-primary" style="border-radius: 50%; width: 40px; height: 40px; border: 1px solid #0d6efd; background:#0d6efd; color:#fff;">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
 
-    // --- CÓDIGO DO CHAT (MANTIDO) ---
+  <script>
     const destinatarioAtivo = "{{ destinatario.id }}";
     const MEU_ID = "{{ request.user.id }}";
+    const chatBox = document.getElementById('chat-box');
+
     let wavesurfers = {};
-    let mediaRecorder;
+    let mediaRecorder = null;
     let audioChunks = [];
 
+    // ===== WEBSOCKET =====
     const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
     const chatSocket = new WebSocket(`${wsProtocol}${window.location.host}/ws/chat/${MEU_ID}/`);
 
     chatSocket.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (String(data.remetente_id) === String(destinatarioAtivo) || String(data.remetente_id) === String(MEU_ID)) {
-            adicionarMensagemNaTela(data);
-            if (String(data.remetente_id) === String(destinatarioAtivo)) fetch(`/chat/marcar-lida/${destinatarioAtivo}/`);
+      const data = JSON.parse(e.data);
+
+      // Mostra mensagens do destinatário ativo ou minhas
+      if (String(data.remetente_id) === String(destinatarioAtivo) || String(data.remetente_id) === String(MEU_ID)) {
+        adicionarMensagemNaTela(data);
+        if (String(data.remetente_id) === String(destinatarioAtivo)) {
+          fetch(`/chat/marcar-lida/${data.remetente_id}/`);
         }
+      }
     };
 
-    fetch(`/chat/buscar/${destinatarioAtivo}/`).then(res => res.json()).then(data => {
+    // ===== CARREGAR HISTÓRICO =====
+    fetch(`/chat/buscar/${destinatarioAtivo}/`)
+      .then(res => res.json())
+      .then(data => {
         data.forEach(m => adicionarMensagemNaTela(m));
-        // Pequeno delay para garantir rolagem após carregamento de imagens
-        setTimeout(() => chatBox.scrollTop = chatBox.scrollHeight, 200);
-    });
+        setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 250);
+      });
 
+    function verificarEnter(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        enviar();
+      }
+    }
+
+    // ===== RENDER (igual ao lista.html) =====
     function adicionarMensagemNaTela(m) {
-        if (document.getElementById(`msg-${m.id}`)) return;
-        const souEu = String(m.remetente_id) === String(MEU_ID);
-        const div = document.createElement('div');
-        div.id = `msg-${m.id}`;
-        div.className = `msg-bubble ${souEu ? 'msg-mine' : 'msg-theirs'}`;
+      if (document.getElementById(`msg-${m.id}`)) return;
 
-        let contentHtml = `<div style="white-space: pre-wrap;">${m.conteudo}</div>`; // pre-wrap mantém quebra de linha
-        
-        if (m.arquivo_url) {
-            if (/\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
-                contentHtml += `<div class="waveform-container"><button class="play-btn" onclick="toggleAudio(${m.id})"><i class="fas fa-play" id="icon-${m.id}"></i></button><div id="wave-${m.id}" style="flex: 1;"></div></div>`;
-            } else if (/\.(jpeg|jpg|gif|png|webp)$/i.test(m.arquivo_url)) {
-                contentHtml += `<img src="${m.arquivo_url}" style="max-width:100%; border-radius:10px; margin-top:5px; display:block;" onclick="window.open('${m.arquivo_url}')">`;
-            }
-        }
-        
-        // Formata hora
-        let hora = '';
-        if(m.horario) hora = m.horario;
-        else if(m.timestamp) hora = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const souEu = String(m.remetente_id) === String(MEU_ID);
 
-        div.innerHTML = `${contentHtml}<span class="msg-horario">${hora}</span>`;
-        
-        chatBox.appendChild(div);
-        
-        // Rolagem inteligente
-        const isNearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 150;
-        if (isNearBottom || souEu) {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+      const wrapper = document.createElement('div');
+      wrapper.id = `msg-${m.id}`;
+      wrapper.style.display = 'flex';
+      wrapper.style.justifyContent = souEu ? 'flex-end' : 'flex-start';
+      wrapper.style.marginBottom = '15px';
+      wrapper.style.position = 'relative';
 
-        if (m.arquivo_url && /\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
-            setTimeout(() => {
-                wavesurfers[m.id] = WaveSurfer.create({
-                    container: `#wave-${m.id}`,
-                    waveColor: souEu ? '#cce5ff' : '#999',
-                    progressColor: souEu ? '#fff' : '#007bff',
-                    height: 25, barWidth: 2, cursorWidth: 0
-                });
-                wavesurfers[m.id].load(m.arquivo_url);
-                wavesurfers[m.id].on('finish', () => { document.getElementById(`icon-${m.id}`).className = 'fas fa-play'; });
-            }, 100);
+      const horaExibicao = m.horario || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "");
+
+      let anexoHtml = '';
+      if (m.arquivo_url) {
+        if (/\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
+          anexoHtml = `
+            <div class="waveform-container" onclick="event.stopPropagation()">
+              <button class="play-btn" onclick="toggleAudio(${m.id})">
+                <i class="fas fa-play" id="icon-${m.id}"></i>
+              </button>
+              <div id="wave-${m.id}" style="flex: 1; min-width: 160px;"></div>
+            </div>
+          `;
+        } else if (/\.(jpeg|jpg|gif|png|webp)$/i.test(m.arquivo_url)) {
+          anexoHtml = `
+            <img src="${m.arquivo_url}"
+              style="max-width:200px; border-radius:10px; margin-top:5px; cursor:pointer;"
+              onclick="window.open('${m.arquivo_url}')">
+          `;
         }
+      }
+
+      const menuBtn = souEu ? `
+        <div style="position:absolute; right:8px; top:5px;">
+          <span class="btn-opcoes" onclick="toggleMenu(event, ${m.id})">⋮</span>
+          <div id="menu-${m.id}" class="chat-menu">
+            <div onclick="prepararEdicao(${m.id})">Editar</div>
+            <div onclick="deletarMsg(${m.id})" style="color:red;">Excluir</div>
+          </div>
+        </div>
+      ` : '';
+
+      const nomeExibicao = souEu ? 'Você' : (m.remetente__username || m.remetente_nome || '{{ destinatario.username }}' || 'Usuário');
+      const seloEditada = m.editada ? '<small style="font-size:0.6rem; opacity:0.6; margin-right:5px;">(editada)</small>' : '';
+
+      wrapper.innerHTML = `
+        <div style="
+          max-width:85%;
+          padding:10px 14px;
+          border-radius:15px;
+          background:${souEu ? '#007bff' : 'white'};
+          color:${souEu ? 'white' : '#333'};
+          position:relative;
+          box-shadow:0 1px 3px rgba(0,0,0,0.1);
+        ">
+          ${menuBtn}
+          <small style="opacity:0.7; font-size:0.65rem; display:block; margin-bottom:3px;">
+            ${nomeExibicao}
+          </small>
+
+          <div class="msg-container">
+            <div id="texto-${m.id}" style="white-space: pre-wrap;">${m.conteudo || ''}</div>
+            ${anexoHtml}
+            <div style="display:flex; align-items:center; justify-content:flex-end; margin-top:4px;">
+              ${seloEditada}
+              <span class="msg-horario" style="color:${souEu ? '#e0e0e0' : '#888'}">${horaExibicao}</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      chatBox.appendChild(wrapper);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      // init wavesurfer
+      if (m.arquivo_url && /\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
+        setTimeout(() => {
+          if (!wavesurfers[m.id]) {
+            wavesurfers[m.id] = WaveSurfer.create({
+              container: `#wave-${m.id}`,
+              waveColor: souEu ? '#80bdff' : '#ccc',
+              progressColor: souEu ? '#fff' : '#007bff',
+              height: 30,
+              barWidth: 2
+            });
+            wavesurfers[m.id].load(m.arquivo_url);
+
+            wavesurfers[m.id].on('play', () => {
+              const ic = document.getElementById(`icon-${m.id}`);
+              if (ic) ic.className = 'fas fa-pause';
+            });
+            wavesurfers[m.id].on('pause', () => {
+              const ic = document.getElementById(`icon-${m.id}`);
+              if (ic) ic.className = 'fas fa-play';
+            });
+            wavesurfers[m.id].on('finish', () => {
+              const ic = document.getElementById(`icon-${m.id}`);
+              if (ic) ic.className = 'fas fa-play';
+            });
+          }
+        }, 150);
+      }
     }
 
-    function toggleAudio(id) { 
-        if(wavesurfers[id]) {
-            wavesurfers[id].playPause();
-            const icon = document.getElementById(`icon-${id}`);
-            icon.className = wavesurfers[id].isPlaying() ? 'fas fa-pause' : 'fas fa-play';
-        }
+    function toggleAudio(id) {
+      if (wavesurfers[id]) wavesurfers[id].playPause();
     }
 
-    function enviar() {
-        const input = document.getElementById('chat-input');
-        const file = document.getElementById('file-input');
-        if (!input.value.trim() && !file.files[0]) return;
-
-        const fd = new FormData();
-        fd.append('destinatario_id', destinatarioAtivo);
-        fd.append('conteudo', input.value);
-        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        if (file.files[0]) fd.append('arquivo', file.files[0]);
-
-        // Limpa UI imediatamente para sensação de velocidade
-        const textoTemp = input.value;
-        input.value = ''; 
-        file.value = '';
-        document.getElementById('indicador-anexo').style.display = 'none';
-        input.focus(); // Mantém teclado aberto
-
-        fetch('/chat/enviar/', { method: 'POST', body: fd });
+    // ===== MENU (editar/excluir) =====
+    function toggleMenu(e, id) {
+      e.stopPropagation();
+      document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+      const el = document.getElementById(`menu-${id}`);
+      if (el) el.style.display = 'block';
     }
 
-    // --- ANEXOS E ÁUDIO ---
-    document.getElementById('file-input').addEventListener('change', function() {
-        if (this.files[0]) {
-            document.getElementById('nome-arquivo').innerText = this.files[0].name;
-            document.getElementById('indicador-anexo').style.display = 'flex';
+    window.onclick = () => document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+
+    function deletarMsg(id) {
+      if (!confirm('Deseja realmente excluir esta mensagem?')) return;
+
+      fetch(`/chat/excluir/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
         }
-    });
-    function removerAnexo() { document.getElementById('file-input').value = ""; document.getElementById('indicador-anexo').style.display = 'none'; }
-
-    // Gravação
-    document.getElementById('btn-mic').onclick = async function() {
-        if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.start();
-                document.getElementById('status-gravacao').style.display = 'block';
-                this.style.color = 'red';
-                
-                let secs = 0;
-                const timer = setInterval(() => {
-                    secs++;
-                    document.getElementById('timer-gravacao').innerText = new Date(secs * 1000).toISOString().substr(14, 5);
-                    if (!mediaRecorder || mediaRecorder.state === 'inactive') clearInterval(timer);
-                }, 1000);
-
-                mediaRecorder.onstop = () => {
-                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const fd = new FormData();
-                    fd.append('destinatario_id', destinatarioAtivo);
-                    fd.append('conteudo', '🎤 Áudio');
-                    fd.append('arquivo', new File([blob], 'audio.webm'));
-                    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-                    fetch('/chat/enviar/', { method: 'POST', body: fd });
-                    stream.getTracks().forEach(t => t.stop());
-                    document.getElementById('status-gravacao').style.display = 'none';
-                    this.style.color = '#666';
-                };
-                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            } catch (e) { alert('Erro microfone'); }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'sucesso') {
+          const msgElement = document.getElementById(`msg-${id}`);
+          if (msgElement) msgElement.remove();
         } else {
-            mediaRecorder.stop();
+          alert(data.message || 'Erro ao excluir mensagem.');
         }
+      })
+      .catch(err => console.error("Erro ao excluir:", err));
+    }
+
+    function prepararEdicao(id) {
+      const textoDiv = document.getElementById(`texto-${id}`);
+      if (!textoDiv) return;
+
+      const conteudoOriginal = textoDiv.innerText;
+
+      textoDiv.innerHTML = `
+        <div id="edit-container-${id}" style="display:flex; gap:5px; margin-top:5px;">
+          <input type="text" id="input-edit-${id}" value="${escapeHtml(conteudoOriginal)}"
+            style="flex:1; border-radius:10px; border:1px solid #ccc; padding:4px 8px; color:#333; font-size:0.85rem;">
+          <button onclick="confirmarEdicao(${id})"
+            style="background:#28a745; color:white; border:none; border-radius:5px; padding:0 8px;">
+            <i class="fas fa-check"></i>
+          </button>
+          <button onclick="cancelarEdicao(${id}, '${escapeJs(conteudoOriginal)}')"
+            style="background:#dc3545; color:white; border:none; border-radius:5px; padding:0 8px;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+      const inp = document.getElementById(`input-edit-${id}`);
+      if (inp) inp.focus();
+    }
+
+    function confirmarEdicao(id) {
+      const input = document.getElementById(`input-edit-${id}`);
+      if (!input) return;
+      const novoConteudo = input.value;
+
+      if (!novoConteudo.trim()) return;
+
+      const fd = new FormData();
+      fd.append('conteudo', novoConteudo);
+      fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+      fetch(`/chat/editar/${id}/`, { method: 'POST', body: fd })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'sucesso') {
+            const textoDiv = document.getElementById(`texto-${id}`);
+            if (textoDiv) textoDiv.innerText = novoConteudo;
+
+            // adiciona selo "(editada)" se ainda não existir
+            const msg = document.getElementById(`msg-${id}`);
+            if (msg && !msg.innerHTML.includes('(editada)')) {
+              const horario = msg.querySelector('.msg-horario');
+              if (horario) {
+                horario.insertAdjacentHTML('beforebegin', '<small style="font-size:0.6rem; opacity:0.6; margin-right:5px;">(editada)</small>');
+              }
+            }
+          } else {
+            alert('Erro ao salvar edição.');
+          }
+        })
+        .catch(err => console.error("Erro ao editar:", err));
+    }
+
+    function cancelarEdicao(id, textoOriginal) {
+      const textoDiv = document.getElementById(`texto-${id}`);
+      if (textoDiv) textoDiv.innerText = textoOriginal;
+    }
+
+    // ===== ENVIAR =====
+    function enviar() {
+      const input = document.getElementById('chat-input');
+      const file = document.getElementById('file-input');
+
+      if (!input.value.trim() && !file.files[0]) return;
+
+      const fd = new FormData();
+      fd.append('destinatario_id', destinatarioAtivo);
+      fd.append('conteudo', input.value);
+      fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+      if (file.files[0]) fd.append('arquivo', file.files[0]);
+
+      fetch('/chat/enviar/', { method: 'POST', body: fd });
+
+      input.value = '';
+      file.value = '';
+      document.getElementById('indicador-anexo').style.display = 'none';
+      input.focus();
+    }
+
+    // ===== ANEXO =====
+    document.getElementById('file-input').addEventListener('change', function() {
+      if (this.files[0]) {
+        document.getElementById('nome-arquivo').innerText = this.files[0].name;
+        document.getElementById('indicador-anexo').style.display = 'flex';
+      }
+    });
+
+    function removerAnexo() {
+      document.getElementById('file-input').value = "";
+      document.getElementById('indicador-anexo').style.display = 'none';
+    }
+
+    // ===== GRAVAÇÃO (com timer igual) =====
+    let gravacaoTimer = null;
+    let gravacaoSegundos = 0;
+
+    function formatTimer(secs) {
+      const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+      const ss = String(secs % 60).padStart(2, '0');
+      return `${mm}:${ss}`;
+    }
+
+    document.getElementById('btn-mic').onclick = async function() {
+      const btn = this;
+
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(audioChunks, { type: 'audio/webm' });
+
+            const fd = new FormData();
+            fd.append('destinatario_id', destinatarioAtivo);
+            fd.append('conteudo', '🎤 Áudio');
+            fd.append('arquivo', new File([blob], 'audio.webm', { type: 'audio/webm' }));
+            fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            fetch('/chat/enviar/', { method: 'POST', body: fd });
+
+            // encerra stream
+            stream.getTracks().forEach(t => t.stop());
+
+            // UI
+            document.getElementById('status-gravacao').style.display = 'none';
+            btn.style.color = '';
+            if (gravacaoTimer) clearInterval(gravacaoTimer);
+            gravacaoTimer = null;
+            gravacaoSegundos = 0;
+            document.getElementById('timer-gravacao').innerText = '00:00';
+          };
+
+          // start
+          mediaRecorder.start();
+          document.getElementById('status-gravacao').style.display = 'block';
+          btn.style.color = 'red';
+
+          gravacaoSegundos = 0;
+          document.getElementById('timer-gravacao').innerText = '00:00';
+          if (gravacaoTimer) clearInterval(gravacaoTimer);
+
+          gravacaoTimer = setInterval(() => {
+            gravacaoSegundos += 1;
+            document.getElementById('timer-gravacao').innerText = formatTimer(gravacaoSegundos);
+          }, 1000);
+
+        } catch (e) {
+          alert('Erro microfone');
+        }
+      } else {
+        mediaRecorder.stop();
+      }
     };
-</script>
+
+    // ===== helpers para evitar quebrar edição com aspas =====
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+    function escapeJs(str) {
+      return String(str)
+        .replaceAll('\\', '\\\\')
+        .replaceAll("'", "\\'")
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+    }
+  </script>
 </body>
 </html>

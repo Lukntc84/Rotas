@@ -55,6 +55,16 @@ class Rota(models.Model):
     motoboy = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="aberta")
 
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rotas_criadas",
+        verbose_name="Criada por",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    
     def __str__(self):
         return f"{self.nome} ({self.data})"
 
@@ -183,14 +193,26 @@ class Transferencia(models.Model):
     )
     
     STATUS_CHOICES = [
-        ("pendente", "Pendente"), 
+        ("pendente", "Pendente"),
         ("em_transito", "Em Trânsito"),
-        ("confirmada", "Confirmada")
+        ("aguardando_cd", "Aguardando confirmação CD"),
+        ("confirmada", "Confirmada"),
     ]
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente") #
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pendente")
 
     def __str__(self):
         return f"{self.get_tipo_display()} - {self.loja} ({self.status})"
+    
+    confirmada_cd = models.BooleanField(default=False)
+    confirmada_cd_em = models.DateTimeField(null=True, blank=True)
+    confirmada_cd_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="transferencias_confirmadas_cd"
+    )
+    obs_confirmacao_cd = models.TextField(blank=True, default="")
+    
     
 class Notificacao(models.Model):
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notificacoes')

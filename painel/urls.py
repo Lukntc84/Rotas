@@ -16,11 +16,14 @@ urlpatterns = [
     path("transferencias/", views.transferencias_lista, name="transferencias_lista"),
     path("transferencias/novo/", views.transferencia_nova, name="transferencia_nova"),
     path("transferencias/<int:transferencia_id>/", views.transferencia_detalhe, name="transferencia_detalhe"),
-    path("transferencias/<int:transferencia_id>/confirmar/", views.transferencia_confirmar, name="transferencia_confirmar"),
+
     path('transferencias/<int:transferencia_id>/excluir/', views.transferencia_excluir, name='transferencia_excluir'),
     path('transferencias/criar-rota/', views.criar_rota_motorista, name='criar_rota_motorista'),
     path('transferencia/<int:pk>/coletar/', views.confirmar_coleta, name='confirmar_coleta'),
     path('transferencia/<int:pk>/receber/', views.confirmar_recebimento, name='confirmar_recebimento'),
     path('notificacao/ler/<int:notificacao_id>/', views.marcar_notificacao_lida, name='notificacao_ler'),
     path('notificacoes/', views.notificacoes_lista, name='notificacoes_lista'),
+    path("transferencia/<int:pk>/confirmar-cd/", views.transferencia_confirmar_cd, name="transferencia_confirmar_cd"),
+    path("rotas/<int:rota_id>/coletas/bulk/", views.bulk_confirmar_coleta, name="bulk_confirmar_coleta"),
+    path("rotas/<int:rota_id>/entregas/bulk/", views.bulk_confirmar_entrega, name="bulk_confirmar_entrega"),
 ]

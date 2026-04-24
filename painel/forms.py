@@ -45,7 +45,7 @@ class TransferenciaForm(forms.ModelForm):
         ('saida', 'Saída'),
     ]
     tipo = forms.ChoiceField(choices=TIPO_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
-    
+
     UNIDADES = [
         ("Unidade", "Unidade"),
         ("Caixa", "Caixa"),
@@ -73,16 +73,16 @@ class TransferenciaForm(forms.ModelForm):
             "numero_transferencia",
             "porte_carga",
             "numero_documento",
-            "observacoes", 
+            "observacoes",
         ]
         widgets = {
-           "quantidade": forms.NumberInput(attrs={
+            "quantidade": forms.NumberInput(attrs={
                 "class": "form-control input-bonitinho-qtd"
             }),
             "data": forms.DateInput(attrs={
-                    "type": "date", 
-                    "class": "form-control input-bonitinho-data"
-                }),
+                "type": "date",
+                "class": "form-control input-bonitinho-data"
+            }),
             'numero_transferencia': forms.TextInput(attrs={'class': 'input', 'placeholder': 'Ex: 65456'}),
             'porte_carga': forms.Select(attrs={'class': 'input'}),
             "tipo": forms.Select(attrs={"class": "form-control"}),
@@ -108,6 +108,16 @@ class TransferenciaForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+        # ✅ 1) Motorista: mostrar somente usuários do grupo Motoboy
+        # (não lista operadores, lojas, etc.)
+        if 'motorista' in self.fields:
+            self.fields['motorista'].queryset = (
+                self.fields['motorista'].queryset
+                .filter(groups__name="Motoboy", is_active=True)
+                .order_by("username")
+                .distinct()
+            )
+
         if user and not user.is_staff:
             # Filtra a loja de origem baseada no perfil do usuário logado
             user_loja = getattr(user, 'loja_perfil', None)
@@ -116,18 +126,28 @@ class TransferenciaForm(forms.ModelForm):
                 self.fields['loja_origem'].initial = user_loja
                 self.fields['loja_origem'].empty_label = None
 
+                # ✅ 2) Para usuário de loja: "Tipo" sempre Saída e travado
+                if 'tipo' in self.fields:
+                    self.fields['tipo'].initial = 'saida'
+                    self.fields['tipo'].disabled = True
+
     def save(self, commit=True):
         """
-        Sobrescrevemos o save para garantir que o campo 'tamanho_carga' 
+        Sobrescrevemos o save para garantir que o campo 'tamanho_carga'
         receba o mesmo valor que o usuário selecionou em 'porte_carga'.
         """
         instance = super().save(commit=False)
-        
+
+        # ✅ se o campo estiver desabilitado, o cleaned_data pode não trazer 'tipo'
+        # então garantimos coerência quando for loja
+        if hasattr(getattr(self, "user", None), "loja_perfil") and not getattr(self.user, "is_staff", False):
+            instance.tipo = "saida"
+
         # Sincroniza os campos para evitar erro nos filtros da lista
         porte_selecionado = self.cleaned_data.get('porte_carga')
         if porte_selecionado:
             instance.tamanho_carga = porte_selecionado
-            
+
         if commit:
             instance.save()
         return instance

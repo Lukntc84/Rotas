@@ -44,7 +44,7 @@
 </div>
 
 {# --- SEÇÃO DE LOGÍSTICA: RESTRITA PARA MOTOBOY E ADMIN --- #}
-{% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}
+{% if is_admin or is_motoboy or is_operador %}
     <h3 style="margin: 20px 0 10px 0; color: #666;">📊 Logística de Rotas</h3>
     <div class="kpi-grid">
       <div class="kpi-card">
@@ -120,7 +120,7 @@
 <div class="{% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}grid-2{% else %}grid-1{% endif %}">
   
   {# --- ROTAS ATIVAS: RESTRITA PARA MOTOBOY E ADMIN --- #}
-  {% if request.user.is_staff or request.user.groups.all.0.name == 'Motoboy' %}
+ {% if is_admin or is_motoboy or is_operador %}
   <div class="card">
     <div class="card-title">
       <h2>Rotas Ativas</h2>

@@ -17,7 +17,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
         gap: 30px;
-        margin-top: 25px;
+        margin-top: 18px;
     }
 
     /* Card Limpo e Espaçoso */
@@ -74,9 +74,9 @@
         z-index: 5;
     }
 
-    /* Aumento das margens internas para n ficar espremido */
+    /* Aumento das margens internas */
     .card-body-custom {
-        padding: 35px 25px; /* Padding generoso */
+        padding: 35px 25px;
     }
 
     .destino-titulo {
@@ -92,7 +92,7 @@
     .info-box {
         background-color: #f8fafc;
         border-radius: 15px;
-        padding: 25px; /* Mais espaço interno */
+        padding: 25px;
         margin-bottom: 20px;
         pointer-events: none;
     }
@@ -134,126 +134,748 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         margin-bottom: 30px;
     }
+
+    /* ===== filtro estilo Dashboard ===== */
+    .date-filter-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 18px;
+        background: #fff;
+        width: 100%;
+        max-width: 780px;
+    }
+    .date-filter-title {
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 14px;
+    }
+    .df-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .df-label {
+        font-size: 0.85rem;
+        color: #374151;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .df-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+    .df-actions .btn {
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
+        font-weight: 800;
+    }
+    .df-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+    @media (max-width: 768px) {
+        .df-row-2 { grid-template-columns: 1fr; }
+        .date-filter-card { max-width: 100%; }
+    }
+
+    /* ===== inputs de DATE ===== */
+    #date-filter-card input[type="date"].form-control {
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      padding: 10px 14px;
+      font-weight: 700;
+      color: #111827;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+      transition: all .15s ease;
+    }
+    #date-filter-card input[type="date"].form-control::-webkit-calendar-picker-indicator {
+      opacity: .75;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 10px;
+      background-color: rgba(59,130,246,.10);
+    }
+    #date-filter-card input[type="date"].form-control:focus,
+    #date-filter-card select.form-select:focus {
+      outline: none;
+      border-color: rgba(59,130,246,.55);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+      background: #ffffff;
+    }
+    #date-filter-card select.form-select {
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      padding: 10px 14px;
+      font-weight: 700;
+      color: #111827;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    /* ===== Seções (compactas) ===== */
+    .section-wrap { margin-top: 18px; }
+    details.section-accordion {
+        background: #fff;
+        border: 1px solid #edf2f7;
+        border-radius: 14px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+    details.section-accordion summary {
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        font-weight: 900;
+        color: #1a202c;
+    }
+    details.section-accordion summary::-webkit-details-marker { display: none; }
+    .section-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #334155;
+        white-space: nowrap;
+    }
+    .section-body {
+        padding: 10px 16px 18px 16px;
+        border-top: 1px solid #edf2f7;
+        background: #fbfdff;
+    }
+    .section-sub {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    .section-actions {
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-top: 6px;
+    }
 </style>
 
 <div class="page-inner">
     <div class="filter-bar">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div class="d-flex flex-wrap gap-2">
-                <a href="?tamanho=pequeno" class="btn btn-outline-info btn-sm rounded-pill px-3">📦 Motoboy</a>
-                <a href="?tamanho=grande" class="btn btn-outline-primary btn-sm rounded-pill px-3">🚚 Carga Grande</a>
-                <a href="{% url 'painel:transferencias_lista' %}" class="btn btn-link btn-sm text-danger text-decoration-none">Limpar Filtros</a>
-                
-                <form method="GET" class="d-inline ms-2">
-                    <select name="loja" onchange="this.form.submit()" class="form-select form-select-sm rounded-pill border-2" style="min-width: 200px;">
-                        <option value="">Filtrar por Loja...</option>
-                        {% for loja in lojas %}
-                            <option value="{{ loja.id }}" {% if request.GET.loja == loja.id|stringformat:"i" %}selected{% endif %}>{{ loja.nome }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+
+            <!-- ESQUERDA: filtros existentes -->
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+
+                <a href="#" class="btn btn-outline-info btn-sm rounded-pill px-3"
+                   onclick="event.preventDefault(); setParamAndGo('tamanho','pequeno');">📦 Motoboy</a>
+                <a href="#" class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                   onclick="event.preventDefault(); setParamAndGo('tamanho','grande');">🚚 Carga Grande</a>
+
+                <a href="{% url 'painel:transferencias_lista' %}"
+                   class="btn btn-link btn-sm text-danger text-decoration-none"
+                   onclick="clearSavedFilters();">
+                    Limpar Filtros
+                </a>
+
+                <select name="loja" onchange="setParamAndGo('loja', this.value)"
+                        class="form-select form-select-sm rounded-pill border-2"
+                        style="min-width: 240px;">
+                    <option value="">Filtrar por Loja...</option>
+                    {% for loja in lojas %}
+                        <option value="{{ loja.id }}"
+                          {% if request.GET.loja == loja.id|stringformat:"i" %}selected{% endif %}>
+                          {{ loja.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
             </div>
 
-            {% if request.user.groups.all.0.name == 'Motoboy' or user.is_staff %}
-                <button type="button" id="btn-submit-rota" onclick="document.getElementById('form-rota').submit();" class="btn btn-success shadow-sm rounded-pill px-4" disabled>
-                    <i class="bi bi-signpost-split-fill"></i> Criar Rota (0)
-                </button>
+            {% if is_motoboy or user.is_staff %}
+              <button
+                  type="button"
+                  id="btn-submit-rota"
+                  onclick="document.getElementById('form-rota').submit();"
+                  class="btn btn-success shadow-sm rounded-pill px-4"
+                  disabled
+                  data-rota-ativa-id="{% if rota_ativa %}{{ rota_ativa.id }}{% endif %}"
+              >
+                  <i class="bi bi-signpost-split-fill"></i>
+                  {% if rota_ativa %}
+                    Adicionar à Rota #{{ rota_ativa.id }} (0)
+                  {% else %}
+                    Criar Rota (0)
+                  {% endif %}
+              </button>
             {% endif %}
+        </div>
+
+        {% if user.is_staff %}
+        <div class="alert alert-info mt-3 mb-0" style="border-radius: 14px;">
+            <strong>Rota do dia detectada:</strong>
+            você já tem uma rota hoje <strong>#{{ rota_ativa.id }}</strong>.
+            Ao clicar em <strong>Criar Rota</strong>, as transferências selecionadas serão <strong>anexadas</strong> nela (sem duplicar rota).
+        </div>
+        {% elif rota_ativa and is_motoboy %}
+        <div class="alert alert-info mt-3 mb-0" style="border-radius: 14px;">
+            <strong>Rota do dia detectada:</strong>
+            você já tem uma rota hoje <strong>#{{ rota_ativa.id }}</strong>.
+            Ao clicar em <strong>Criar Rota</strong>, as transferências selecionadas serão <strong>anexadas</strong> nela (sem duplicar rota).
+        </div>
+        {% endif %}
+
+        <!-- Filtro de datas estilo dashboard -->
+        <div class="mt-3">
+            <div class="date-filter-card" id="date-filter-card">
+                <div class="date-filter-title">Filtro de dias</div>
+
+                <form method="GET" id="date-filter-form">
+                    <input type="hidden" name="tamanho" id="h_tamanho" value="{{ request.GET.tamanho|default:'' }}">
+                    <input type="hidden" name="loja" id="h_loja" value="{{ request.GET.loja|default:'' }}">
+
+                    {% if request.GET.mostrar_tudo %}
+                      <input type="hidden" name="mostrar_tudo" value="{{ request.GET.mostrar_tudo }}">
+                    {% endif %}
+
+                    <div class="df-grid">
+                        <div>
+                            <div class="df-label">Modo</div>
+                            <select class="form-select rounded-3" name="mode" id="df_mode">
+                                <option value="day" {% if request.GET.mode|default:'day' == 'day' %}selected{% endif %}>Um dia</option>
+                                <option value="range" {% if request.GET.mode == 'range' %}selected{% endif %}>Intervalo</option>
+                            </select>
+                        </div>
+
+                        <div id="df_day_block">
+                            <div class="df-label">Dia</div>
+                            <input type="date" class="form-control rounded-3"
+                                   name="data" id="df_day"
+                                   value="{{ request.GET.data|default:'' }}">
+                        </div>
+
+                        <div id="df_range_block" style="display:none;">
+                            <div class="df-row-2">
+                                <div>
+                                    <div class="df-label">Início</div>
+                                    <input type="date" class="form-control rounded-3"
+                                           name="data_inicio" id="df_start"
+                                           value="{{ request.GET.data_inicio|default:'' }}">
+                                </div>
+                                <div>
+                                    <div class="df-label">Fim</div>
+                                    <input type="date" class="form-control rounded-3"
+                                           name="data_fim" id="df_end"
+                                           value="{{ request.GET.data_fim|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="df-actions">
+                            <button type="submit" class="btn btn-primary" id="df_apply">Aplicar</button>
+                            <button type="button" class="btn btn-outline-secondary" id="df_today">Hoje</button>
+                            <button type="button" class="btn btn-outline-secondary" id="df_yesterday">Ontem</button>
+                            <button type="button" class="btn btn-outline-secondary" id="df_last7">Últimos 7 dias</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <form id="form-rota" method="POST" action="{% url 'painel:criar_rota_motorista' %}">
         {% csrf_token %}
-        
-        <div class="dashboard-logistica">
-            {% for t in transferencias %}
-            <div class="card-transferencia" id="card-{{ t.id }}">
-                <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}" 
-                       id="check-{{ t.id }}" class="check-input">
-                
-                <label for="check-{{ t.id }}" class="m-0 w-100 cursor-pointer">
-                    <div class="card-body-custom">
-                        <div class="text-center">
-                            {% if t.tamanho_carga == 'grande' %}
-                                <span class="badge-porte porte-grande">🚚 Carga Grande</span>
-                            {% else %}
-                                <span class="badge-porte porte-pequeno">📦 Motoboy</span>
-                            {% endif %}
-                        </div>
 
-                        <div class="destino-titulo">
-                            {{ t.loja_destino.nome }}
-                        </div>
+        {# --- controle de paginação simples --- #}
+        {% if request.GET.mostrar_tudo == "1" %}
+          {% with limite=999999 %}
+          {% endwith %}
+        {% endif %}
 
-                        <div class="info-box">
-                            <div class="info-item">
-                                <span class="info-label">Origem:</span>
-                                <span class="info-value">{{ t.loja_origem.nome }}</span>
+        <div class="section-wrap">
+          <details class="section-accordion" open>
+            <summary>
+              <span>📦 Disponíveis para rota</span>
+              <span class="section-pill">{{ transferencias_disponiveis|length }} transferência(s)</span>
+            </summary>
+            <div class="section-body">
+              <div class="section-sub">Selecione para criar/anexar à rota.</div>
+
+<div class="dashboard-logistica" id="grid-disponiveis">
+
+  {% if request.GET.mostrar_tudo == "1" %}
+    {% for t in transferencias_disponiveis %}
+      {# ... SEU CARD DO JEITO QUE JÁ ESTAVA ... #}
+      <div class="card-transferencia" id="card-{{ t.id }}">
+        <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}"
+               id="check-{{ t.id }}" class="check-input">
+        <label for="check-{{ t.id }}" class="m-0 w-100 cursor-pointer">
+          <div class="card-body-custom">
+            <div class="text-center">
+              {% if t.tamanho_carga == 'grande' %}
+                <span class="badge-porte porte-grande">🚚 Carga Grande</span>
+              {% else %}
+                <span class="badge-porte porte-pequeno">📦 Motoboy</span>
+              {% endif %}
+            </div>
+
+            <div class="destino-titulo">{{ t.loja_destino.nome }}</div>
+
+            <div class="info-box">
+              <div class="info-item">
+                <span class="info-label">Origem:</span>
+                <span class="info-value">{{ t.loja_origem.nome }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Criada por:</span>
+                <span class="info-value">{{ t.criado_por.username|default:"Sistema" }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Nº Transf:</span>
+                <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Produto:</span>
+                <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <div class="px-4 pb-4" style="position: relative; z-index: 10;">
+          <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
+            Visualizar Detalhes
+          </a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="w-100 text-center py-4" style="grid-column: 1 / -1;">
+        <div class="card p-5 border-0 shadow-sm rounded-4">
+          <i class="bi bi-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+          <p class="text-muted fs-5">Nenhuma transferência disponível para rota.</p>
+        </div>
+      </div>
+    {% endfor %}
+
+  {% else %}
+    {% for t in transferencias_disponiveis|slice:":12" %}
+      {# ... MESMO CARD (igual acima) ... #}
+      <div class="card-transferencia" id="card-{{ t.id }}">
+        <input type="checkbox" name="transferencias_selecionadas" value="{{ t.id }}"
+               id="check-{{ t.id }}" class="check-input">
+        <label for="check-{{ t.id }}" class="m-0 w-100 cursor-pointer">
+          <div class="card-body-custom">
+            <div class="text-center">
+              {% if t.tamanho_carga == 'grande' %}
+                <span class="badge-porte porte-grande">🚚 Carga Grande</span>
+              {% else %}
+                <span class="badge-porte porte-pequeno">📦 Motoboy</span>
+              {% endif %}
+            </div>
+
+            <div class="destino-titulo">{{ t.loja_destino.nome }}</div>
+
+            <div class="info-box">
+              <div class="info-item">
+                <span class="info-label">Origem:</span>
+                <span class="info-value">{{ t.loja_origem.nome }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Criada por:</span>
+                <span class="info-value">{{ t.criado_por.username|default:"Sistema" }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Nº Transf:</span>
+                <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Produto:</span>
+                <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
+              </div>
+            </div>
+          </div>
+        </label>
+
+        <div class="px-4 pb-4" style="position: relative; z-index: 10;">
+          <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
+            Visualizar Detalhes
+          </a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="w-100 text-center py-4" style="grid-column: 1 / -1;">
+        <div class="card p-5 border-0 shadow-sm rounded-4">
+          <i class="bi bi-inbox text-muted mb-3" style="font-size: 3rem;"></i>
+          <p class="text-muted fs-5">Nenhuma transferência disponível para rota.</p>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+</div>
+
+              <div class="section-actions">
+                {% if request.GET.mostrar_tudo == "1" %}
+                  <a class="btn btn-outline-secondary btn-sm"
+                     href="{{ request.path }}?{{ request.GET.urlencode|cut:'mostrar_tudo=1'|cut:'&mostrar_tudo=1' }}">
+                    Mostrar menos
+                  </a>
+                {% else %}
+                  {% if transferencias_disponiveis|length > 12 %}
+                    <a class="btn btn-outline-secondary btn-sm" href="?{{ request.GET.urlencode }}&mostrar_tudo=1">
+                      Mostrar tudo
+                    </a>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="section-wrap">
+          <details class="section-accordion">
+            <summary>
+              <span>🚦 Em rota</span>
+              <span class="section-pill">{{ transferencias_em_rota|length }} transferência(s)</span>
+            </summary>
+            <div class="section-body">
+              <div class="section-sub">Em trânsito/coleta, não selecionáveis.</div>
+
+              <div class="dashboard-logistica" id="grid-em-rota">
+                  {% for t in transferencias_em_rota %}
+                    {% if t.status != "confirmada" and t.status != "aguardando_cd" %}
+                      <div class="card-transferencia" id="card-emrota-{{ t.id }}" style="opacity: 0.97;">
+                          <input type="checkbox" disabled id="check-emrota-{{ t.id }}" class="check-input">
+
+                          <label class="m-0 w-100 cursor-pointer">
+                              <div class="card-body-custom">
+                                  <div class="text-center">
+                                      <span class="badge-porte porte-pequeno"
+                                            style="background:#ecfeff;color:#0e7490;border:1px solid #a5f3fc;">
+                                          🚦 Em rota
+                                      </span>
+                                  </div>
+
+                                  <div class="destino-titulo">
+                                      {{ t.loja_destino.nome }}
+                                  </div>
+
+                                  <div class="info-box">
+                                      <div class="info-item">
+                                          <span class="info-label">Origem:</span>
+                                          <span class="info-value">{{ t.loja_origem.nome }}</span>
+                                      </div>
+
+                                      {% if t.rota %}
+                                      <div class="info-item">
+                                          <span class="info-label">Rota:</span>
+                                          <span class="info-value">#{{ t.rota.id }}</span>
+                                      </div>
+                                      <div class="info-item">
+                                          <span class="info-label">Motoboy:</span>
+                                          <span class="info-value">{{ t.rota.motoboy.username }}</span>
+                                      </div>
+                                      {% endif %}
+
+                                      <div class="info-item">
+                                        <span class="info-label">Criada por:</span>
+                                        <span class="info-value">{{ t.criado_por.username|default:"Sistema" }}</span>
+                                      </div>
+
+                                      <div class="info-item">
+                                          <span class="info-label">Nº Transf:</span>
+                                          <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
+                                      </div>
+
+                                      <div class="info-item">
+                                          <span class="info-label">Produto:</span>
+                                          <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
+                                      </div>
+
+                                      <div class="info-item">
+                                          <span class="info-label">Status:</span>
+                                          <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </label>
+
+                          <div class="px-4 pb-4" style="position: relative; z-index: 10;">
+                              <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
+                                  Visualizar Detalhes
+                              </a>
+                          </div>
+                      </div>
+                    {% endif %}
+                  {% empty %}
+                    <div class="w-100 text-center py-4" style="grid-column: 1 / -1;">
+                      <div class="card p-5 border-0 shadow-sm rounded-4">
+                        <i class="bi bi-truck text-muted mb-3" style="font-size: 3rem;"></i>
+                        <p class="text-muted fs-5">Nenhuma transferência em rota.</p>
+                      </div>
+                    </div>
+                  {% endfor %}
+              </div>
+            </div>
+          </details>
+        </div>
+
+
+        <div class="section-wrap">
+          <details class="section-accordion">
+            <summary>
+              <span>✅ Entregues</span>
+              <span class="section-pill">ver finalizadas/aguardando CD</span>
+            </summary>
+            <div class="section-body">
+              <div class="section-sub">Entregues pelo motoboy. Podem estar aguardando CD ou finalizadas.</div>
+
+              <div class="dashboard-logistica" id="grid-entregues">
+                {% with tem_entregues=0 %}
+                {% for t in transferencias_em_rota %}
+                  {% if t.status == "aguardando_cd" or t.status == "confirmada" %}
+                    {% if forloop.first %}{% endif %}
+                    <div class="card-transferencia" id="card-entregue-{{ t.id }}" style="opacity: 0.97;">
+                        <input type="checkbox" disabled id="check-entregue-{{ t.id }}" class="check-input">
+
+                        <label class="m-0 w-100 cursor-pointer">
+                            <div class="card-body-custom">
+                                <div class="text-center">
+                                    <span class="badge-porte porte-pequeno"
+                                          style="background:#f0fff4;color:#276749;border:1px solid #c6f6d5;">
+                                        ✅ Entregue
+                                    </span>
+                                </div>
+
+                                <div class="destino-titulo">
+                                    {{ t.loja_destino.nome }}
+                                </div>
+
+                                <div class="info-box">
+                                    <div class="info-item">
+                                        <span class="info-label">Origem:</span>
+                                        <span class="info-value">{{ t.loja_origem.nome }}</span>
+                                    </div>
+
+                                    {% if t.rota %}
+                                    <div class="info-item">
+                                        <span class="info-label">Rota:</span>
+                                        <span class="info-value">#{{ t.rota.id }}</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">Motoboy:</span>
+                                        <span class="info-value">{{ t.rota.motoboy.username }}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="info-item">
+                                      <span class="info-label">Criada por:</span>
+                                      <span class="info-value">{{ t.criado_por.username|default:"Sistema" }}</span>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <span class="info-label">Nº Transf:</span>
+                                        <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <span class="info-label">Produto:</span>
+                                        <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
+                                    </div>
+
+                                    <div class="info-item">
+                                        <span class="info-label">Status:</span>
+                                        <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="info-item">
-                                <span class="info-label">Nº Transf:</span>
-                                <span class="info-value">#{{ t.numero_transferencia|default:"---" }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Produto:</span>
-                                <span class="info-value">{{ t.quantidade }}x {{ t.nome_produto|truncatechars:18 }}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Status:</span>
-                                <span class="badge bg-white text-primary border-0 p-0">{{ t.status }}</span>
-                            </div>
+                        </label>
+
+                        <div class="px-4 pb-4" style="position: relative; z-index: 10;">
+                            <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
+                                Visualizar Detalhes
+                            </a>
                         </div>
                     </div>
-                </label>
-                
-                <div class="px-4 pb-4" style="position: relative; z-index: 10;">
-                    <a href="{% url 'painel:transferencia_detalhe' t.id %}" class="btn btn-outline-primary btn-detalhes w-100">
-                        Visualizar Detalhes
-                    </a>
-                </div>
+                  {% endif %}
+                {% empty %}
+                  <div class="w-100 text-center py-4" style="grid-column: 1 / -1;">
+                    <div class="card p-5 border-0 shadow-sm rounded-4">
+                      <i class="bi bi-check2-circle text-muted mb-3" style="font-size: 3rem;"></i>
+                      <p class="text-muted fs-5">Nenhuma transferência entregue.</p>
+                    </div>
+                  </div>
+                {% endfor %}
+                {% endwith %}
+              </div>
             </div>
-            {% empty %}
-            <div class="w-100 text-center py-5" style="grid-column: 1 / -1;">
-                <div class="card p-5 border-0 shadow-sm rounded-4">
-                    <i class="bi bi-inbox text-muted mb-3" style="font-size: 3rem;"></i>
-                    <p class="text-muted fs-5">Nenhuma transferência disponível para rota.</p>
-                </div>
-            </div>
-            {% endfor %}
+          </details>
         </div>
+
     </form>
 </div>
 
 <script>
+    function setParamAndGo(key, value) {
+        const url = new URL(window.location.href);
+
+        if (value === "" || value === null || value === undefined) {
+            url.searchParams.delete(key);
+        } else {
+            url.searchParams.set(key, value);
+        }
+
+        window.location.href = url.toString();
+    }
+
+    function clearSavedFilters() {
+        try { localStorage.removeItem("transferencias_filtros_v1"); } catch(e) {}
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        const checkboxes = document.querySelectorAll('.check-input');
+        // ✅ só selecionáveis (ignora os disabled da seção "Em rota/Entregues")
+        const checkboxes = document.querySelectorAll('.check-input:not([disabled])');
         const btnSubmit = document.getElementById('btn-submit-rota');
 
         checkboxes.forEach(input => {
             input.addEventListener('change', function() {
                 const card = document.getElementById('card-' + this.value);
-                
+
                 if (this.checked) {
                     card.classList.add('selected');
                 } else {
                     card.classList.remove('selected');
                 }
-                
+
                 atualizarBotao();
             });
         });
 
         function atualizarBotao() {
-            const total = document.querySelectorAll('.check-input:checked').length;
-            if (btnSubmit) {
-                btnSubmit.disabled = total === 0;
-                if(total > 0) {
-                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Iniciar Rota (${total})`;
+            const total = document.querySelectorAll('.check-input:not([disabled]):checked').length;
+            if (!btnSubmit) return;
+
+            const rotaAtivaId = btnSubmit.getAttribute('data-rota-ativa-id');
+            btnSubmit.disabled = total === 0;
+
+            if (total > 0) {
+                if (rotaAtivaId) {
+                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Adicionar à Rota #${rotaAtivaId} (${total})`;
+                } else {
+                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Criar Rota (${total})`;
+                }
+            } else {
+                if (rotaAtivaId) {
+                    btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Adicionar à Rota #${rotaAtivaId} (0)`;
                 } else {
                     btnSubmit.innerHTML = `<i class="bi bi-signpost-split-fill"></i> Criar Rota (0)`;
                 }
             }
         }
+
+        // ===== Filtro de datas =====
+        const modeEl = document.getElementById('df_mode');
+        const dayBlock = document.getElementById('df_day_block');
+        const rangeBlock = document.getElementById('df_range_block');
+
+        const dayInput = document.getElementById('df_day');
+        const startInput = document.getElementById('df_start');
+        const endInput = document.getElementById('df_end');
+
+        const btnToday = document.getElementById('df_today');
+        const btnYesterday = document.getElementById('df_yesterday');
+        const btnLast7 = document.getElementById('df_last7');
+
+        function toYMD(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth()+1).padStart(2,'0');
+            const dd = String(d.getDate()).padStart(2,'0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function applyModeUI() {
+            const mode = modeEl.value;
+
+            if (mode === 'range') {
+                rangeBlock.style.display = '';
+                dayBlock.style.display = 'none';
+                dayInput.value = '';
+            } else {
+                rangeBlock.style.display = 'none';
+                dayBlock.style.display = '';
+                startInput.value = '';
+                endInput.value = '';
+            }
+        }
+
+        modeEl.addEventListener('change', applyModeUI);
+
+        (function initModeFromGET() {
+            const url = new URL(window.location.href);
+            const mode = url.searchParams.get('mode');
+
+            if (mode === 'range') modeEl.value = 'range';
+            else modeEl.value = 'day';
+
+            applyModeUI();
+        })();
+
+        btnToday.addEventListener('click', () => {
+            modeEl.value = 'day';
+            applyModeUI();
+            dayInput.value = toYMD(new Date());
+            document.getElementById('date-filter-form').submit();
+        });
+
+        btnYesterday.addEventListener('click', () => {
+            modeEl.value = 'day';
+            applyModeUI();
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            dayInput.value = toYMD(d);
+            document.getElementById('date-filter-form').submit();
+        });
+
+        btnLast7.addEventListener('click', () => {
+            modeEl.value = 'range';
+            applyModeUI();
+            const end = new Date();
+            const start = new Date();
+            start.setDate(start.getDate() - 6);
+
+            startInput.value = toYMD(start);
+            endInput.value = toYMD(end);
+            document.getElementById('date-filter-form').submit();
+        });
+
+        document.getElementById('date-filter-form').addEventListener('submit', () => {
+            const mode = modeEl.value;
+            if (mode === 'range') {
+                dayInput.value = '';
+            } else {
+                startInput.value = '';
+                endInput.value = '';
+            }
+        });
     });
 </script>
 {% endblock %}

@@ -4,66 +4,71 @@
 {% block header_sub %} Comunique-se com a equipe do CD e Lojas {% endblock %}
 
 {% block content %}
+
+<!-- Obs: meta viewport aqui dentro do body nem sempre funciona.
+     A correção real é o script abaixo que injeta/ajusta no <head> -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 <script src="https://unpkg.com/wavesurfer.js@7"></script>
 
 <style>
     /* Layout Base Desktop */
     .chat-wrapper { display: grid; grid-template-columns: 300px 1fr; gap: 20px; align-items: start; height: 600px; }
     .contato-sidebar { background: white; border: 1px solid #eee; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; height: 100%; }
-    
+
     /* Estilos de interface preservados */
     .search-container { padding: 10px; border-bottom: 1px solid #eee; background: #fdfdfd; }
     .search-input-wrapper { position: relative; display: flex; align-items: center; }
     .search-input-wrapper i { position: absolute; left: 10px; color: #aaa; font-size: 0.8rem; }
     .search-input-wrapper input { width: 100%; padding: 6px 10px 6px 30px; border-radius: 20px; border: 1px solid #ddd; font-size: 0.85rem; outline: none; }
-    
+
     #indicador-anexo { display: none; background: #eef6ff; padding: 8px 15px; font-size: 0.8rem; border-top: 1px solid #d1e7ff; color: #0056b3; align-items: center; justify-content: space-between; }
     .chat-menu { display: none; position: absolute; right: 5px; top: 25px; background: white; border: 1px solid #ddd; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); min-width: 100px; }
     .chat-menu div { padding: 8px 12px; font-size: 0.85rem; cursor: pointer; color: #333; }
     .btn-opcoes { cursor: pointer; padding: 0 5px; font-size: 1.2rem; opacity: 0.7; }
-    
+
     /* Player de Áudio */
     .waveform-container { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 12px; margin-top: 5px; min-width: 220px; }
     .play-btn { background: #007bff; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
-   @media (max-width: 768px) {
-    /* Remove margens e paddings do container pai que podem vir do base.html */
-    body, #content-wrapper, .container-fluid { 
-        padding: 0 !important; 
-        margin: 0 !important; 
-    }
+    @media (max-width: 768px) {
+        /* Remove margens e paddings do container pai que podem vir do base.html */
+        body, #content-wrapper, .container-fluid {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
 
-    .chat-wrapper { 
-        grid-template-columns: 1fr; 
-        height: 100dvh; /* Usa a altura dinâmica total */
-        gap: 0;
-    }
+        .chat-wrapper {
+            grid-template-columns: 1fr;
+            height: 100dvh; /* Usa a altura dinâmica total */
+            gap: 0;
+        }
 
-    #janela-chat { 
-        position: fixed !important; 
-        top: 0; 
-        left: 0; 
-        width: 100% !important; 
-        height: 100dvh !important; /* Altura total inicial */
-        z-index: 9999; 
-        display: none; 
-        border-radius: 0;
-        margin: 0;
-        border: none;
-    }
+        #janela-chat {
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100dvh !important; /* Altura total inicial */
+            z-index: 9999;
+            display: none;
+            border-radius: 0;
+            margin: 0;
+            border: none;
+        }
 
-    /* Garante que o input não sofra zoom no iOS */
-    #chat-input, #input-pesquisa { font-size: 16px !important; }
+        /* Garante que o input não sofra zoom no iOS */
+        #chat-input, #input-pesquisa { font-size: 16px !important; }
 
-    /* Ajuste para o campo de texto não colar no fundo em iPhones com notch */
-    .chat-input-container { 
-        padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important; 
-        background: white;
+        /* Ajuste para o campo de texto não colar no fundo em iPhones com notch */
+        .chat-input-container {
+            padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+            background: white;
+        }
     }
-}
 
     .btn-voltar { display: none; margin-right: 15px; cursor: pointer; color: #007bff; font-size: 1.1rem; }
-    .msg-container { display: flex; flex-direction: column; position: relative; }   
+    .msg-container { display: flex; flex-direction: column; position: relative; }
     .msg-horario { font-size: 0.65rem; opacity: 0.7; align-self: flex-end; margin-top: 2px; margin-left: 10px; }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 </style>
@@ -90,9 +95,9 @@
                 <div style="font-size: 0.65rem; color: #28a745;">Online</div>
             </div>
         </div>
-        
+
         <div id="chat-box" style="flex-grow: 1; padding: 20px; overflow-y: auto; background-color: #f1f7ff; display: flex; flex-direction: column;"></div>
-        
+
         <div id="indicador-anexo">
             <span><i class="fas fa-file-alt"></i> <span id="nome-arquivo"></span></span>
             <i class="fas fa-times" onclick="removerAnexo()" style="cursor:pointer; color:red; padding: 5px;"></i>
@@ -117,246 +122,344 @@
 </div>
 
 <script>
-    // --- LÓGICA DE TECLADO RESPONSIVO (VISUAL VIEWPORT) ---
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => {
-            const chatContainer = document.getElementById('janela-chat');
-            const chatBox = document.getElementById('chat-box');
-            
-            if (chatContainer.style.display === 'flex') {
-                // Ajusta a altura da janela para o tamanho visível (descontando o teclado)
-                chatContainer.style.height = `${window.visualViewport.height}px`;
-                // Garante que o container esteja no topo
-                chatContainer.style.top = `${window.visualViewport.offsetTop}px`;
-                
-                // Rola para a última mensagem
-                setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 100);
-            }
-        });
+/** ============================
+ *  1) GARANTIA DE VIEWPORT (HEAD)
+ *  ============================
+ *  - Injetamos/ajustamos no <head> mesmo sem mexer no base.html
+ *  - Se já existir, sobrescrevemos para evitar o "980px"
+ */
+(function ensureViewport() {
+    let meta = document.querySelector('meta[name="viewport"]');
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = "viewport";
+        document.head.appendChild(meta);
     }
+    meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover");
+})();
 
-    // Scroll suave ao focar no input
-    document.getElementById('chat-input').addEventListener('focus', () => {
-        setTimeout(() => {
-            const chatBox = document.getElementById('chat-box');
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 300);
-    });
+// URL gerada pelo Django (sem hardcode).
+// Ex: "/chat/m/0/" -> depois trocamos o 0 pelo ID real
+const CHAT_MOBILE_URL_TEMPLATE = "{% url 'chat:chat_mobile_room' 0 %}";
 
-    let chatSocket = null;
-    let destinatarioAtivo = null;
-    const MEU_ID = "{{ request.user.id }}";
-    let wavesurfers = {};
-    let mediaRecorder;
-    let audioChunks = [];
+let chatSocket = null;
+let destinatarioAtivo = null;
+const MEU_ID = "{{ request.user.id }}";
+let wavesurfers = {};
+let mediaRecorder;
+let audioChunks = [];
 
-    // Socket e Recebimento
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-    chatSocket = new WebSocket(`${wsProtocol}${window.location.host}/ws/chat/${MEU_ID}/`);
-
-    chatSocket.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        const idParaMover = (String(data.remetente_id) === String(MEU_ID)) ? data.destinatario_id : data.remetente_id;
-        if (idParaMover) moverParaOTopo(idParaMover);
-
-        if (String(data.remetente_id) === String(destinatarioAtivo) || String(data.remetente_id) === String(MEU_ID)) {
-            adicionarMensagemNaTela(data);
-            if (String(data.remetente_id) === String(destinatarioAtivo)) fetch(`/chat/marcar-lida/${data.remetente_id}/`);
-        } else {
-            let b = document.getElementById(`notificacao-${data.remetente_id}`);
-            if (b) { b.style.display = 'block'; b.innerText = (parseInt(b.innerText) || 0) + 1; }
-        }
-    };
-
-    function abrirChat(id, nome) {
-        destinatarioAtivo = id;
-        document.getElementById('chat-nome-usuario').innerText = nome;
-        document.getElementById('chat-vazio').style.display = 'none';
-        document.getElementById('janela-chat').style.display = 'flex';
-        
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar-contatos').style.display = 'none';
-            document.getElementById('btn-voltar-mobile').style.display = 'block';
-            // Ajuste inicial de altura para mobile
-            if(window.visualViewport) document.getElementById('janela-chat').style.height = `${window.visualViewport.height}px`;
-        }
-        if (window.innerWidth <= 768) {
-        // Se for mobile, redireciona para a nova página
-        window.location.href = `/chat/m/${id}/`;
-    } else {
-        // Se for desktop, mantém sua lógica original de abrir a div ao lado
-        destinatarioAtivo = id;
-        document.getElementById('chat-nome-usuario').innerText = nome;
-        // ... restante do seu código desktop ...
-    }
-        document.getElementById('chat-box').innerHTML = '';
-        const badge = document.getElementById(`notificacao-${id}`);
-        if (badge) badge.style.display = 'none';
-
-        fetch(`/chat/buscar/${id}/`).then(res => res.json()).then(data => {
-            data.forEach(m => adicionarMensagemNaTela(m));
-            fetch(`/chat/marcar-lida/${id}/`);
-        });
-    }
-
-    function adicionarMensagemNaTela(m) {
-        const box = document.getElementById('chat-box');
-        if (document.getElementById(`msg-${m.id}`)) return;
-        
-        const souEu = String(m.remetente_id) === String(MEU_ID);
-        const div = document.createElement('div');
-        div.id = `msg-${m.id}`;
-        div.style.display = 'flex';
-        div.style.justifyContent = souEu ? 'flex-end' : 'flex-start';
-        div.style.marginBottom = '15px';
-        div.style.position = 'relative';
-
-        let horaExibicao = m.horario || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "");
-
-        let anexoHtml = '';
-        if (m.arquivo_url) {
-            if (/\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
-                anexoHtml = `<div class="waveform-container" onclick="event.stopPropagation()"><button class="play-btn" onclick="toggleAudio(${m.id})"><i class="fas fa-play" id="icon-${m.id}"></i></button><div id="wave-${m.id}" style="flex: 1; min-width: 160px;"></div></div>`;
-            } else if (/\.(jpeg|jpg|gif|png|webp)$/i.test(m.arquivo_url)) {
-                anexoHtml = `<img src="${m.arquivo_url}" style="max-width:200px; border-radius:10px; margin-top:5px; cursor:pointer;" onclick="window.open('${m.arquivo_url}')">`;
-            }
-        }
-        
-        const menuBtn = souEu ? `<div style="position: absolute; right: 8px; top: 5px;"><span class="btn-opcoes" onclick="toggleMenu(event, ${m.id})">⋮</span><div id="menu-${m.id}" class="chat-menu"><div onclick="prepararEdicao(${m.id})">Editar</div><div onclick="deletarMsg(${m.id})" style="color:red;">Excluir</div></div></div>` : '';
-
-        div.innerHTML = `
-            <div style="max-width: 85%; padding: 10px 14px; border-radius: 15px; background: ${souEu ? '#007bff' : 'white'}; color: ${souEu ? 'white' : '#333'}; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                ${menuBtn}
-                <small style="opacity: 0.7; font-size: 0.65rem; display: block; margin-bottom: 3px;">${souEu ? 'Você' : m.remetente__username}</small>
-                <div class="msg-container">
-                    <div id="texto-${m.id}">${m.conteudo}</div>
-                    ${anexoHtml}
-                    <span class="msg-horario" style="color: ${souEu ? '#e0e0e0' : '#888'}">${horaExibicao}</span>
-                </div>
-            </div>`;
-        box.appendChild(div);
-        box.scrollTop = box.scrollHeight;
-
-        if (m.arquivo_url && /\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
-            setTimeout(() => {
-                if (!wavesurfers[m.id]) {
-                    wavesurfers[m.id] = WaveSurfer.create({ container: `#wave-${m.id}`, waveColor: souEu ? '#80bdff' : '#ccc', progressColor: souEu ? '#fff' : '#007bff', height: 30, barWidth: 2 });
-                    wavesurfers[m.id].load(m.arquivo_url);
-                    wavesurfers[m.id].on('play', () => document.getElementById(`icon-${m.id}`).className = 'fas fa-pause');
-                    wavesurfers[m.id].on('pause', () => document.getElementById(`icon-${m.id}`).className = 'fas fa-play');
-                }
-            }, 150);
-        }
-    }
-
-    function fecharChatMobile() {
-        document.getElementById('janela-chat').style.display = 'none';
-        document.getElementById('sidebar-contatos').style.display = 'block';
-        destinatarioAtivo = null;
-    }
-    
-    // --- CORREÇÃO DINÂMICA PARA TECLADO IOS/ANDROID ---
+/** ============================
+ *  2) LÓGICA TECLADO RESPONSIVO (visualViewport) - preservada
+ *  ============================ */
 function ajustarLayoutTeclado() {
     if (window.innerWidth <= 768 && destinatarioAtivo) {
         const vv = window.visualViewport;
+        if (!vv) return;
+
         const janelaChat = document.getElementById('janela-chat');
         const chatBox = document.getElementById('chat-box');
 
-        // Define a altura da janela como a altura visível (descontando o teclado)
         janelaChat.style.height = `${vv.height}px`;
-        
-        // Move a janela para o topo visível (evita que ela suba demais)
         janelaChat.style.top = `${vv.offsetTop}px`;
 
-        // Rola para a última mensagem com um pequeno atraso
         setTimeout(() => {
             chatBox.scrollTop = chatBox.scrollHeight;
         }, 100);
     }
 }
 
-// Registra os eventos no viewport
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', ajustarLayoutTeclado);
     window.visualViewport.addEventListener('scroll', ajustarLayoutTeclado);
 }
 
-// Modifique sua função abrirChat para incluir o travamento do Body
+document.getElementById('chat-input').addEventListener('focus', () => {
+    setTimeout(() => {
+        const chatBox = document.getElementById('chat-box');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 300);
+});
+
+/** ============================
+ *  3) WEBSOCKET - preservado
+ *  ============================ */
+const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+chatSocket = new WebSocket(`${wsProtocol}${window.location.host}/ws/chat/${MEU_ID}/`);
+
+chatSocket.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    const idParaMover = (String(data.remetente_id) === String(MEU_ID)) ? data.destinatario_id : data.remetente_id;
+    if (idParaMover) moverParaOTopo(idParaMover);
+
+    if (String(data.remetente_id) === String(destinatarioAtivo) || String(data.remetente_id) === String(MEU_ID)) {
+        adicionarMensagemNaTela(data);
+        if (String(data.remetente_id) === String(destinatarioAtivo)) fetch(`/chat/marcar-lida/${data.remetente_id}/`);
+    } else {
+        let b = document.getElementById(`notificacao-${data.remetente_id}`);
+        if (b) { b.style.display = 'block'; b.innerText = (parseInt(b.innerText) || 0) + 1; }
+    }
+};
+
+/** ============================
+ *  4) abrirChat (ÚNICO) - mesclado
+ *  ============================ */
 function abrirChat(id, nome) {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isMobileUAData = (navigator.userAgentData && navigator.userAgentData.mobile) ? true : false;
+    const isMobileDevice = isMobileUAData || isMobileUA;
+
+    // matchMedia costuma ser mais confiável que innerWidth quando o viewport está ok
+    const isSmallScreen = window.matchMedia ? window.matchMedia("(max-width: 992px)").matches : (window.innerWidth <= 992);
+
+    console.log("Detectando... Mobile:", isMobileDevice, "| SmallScreen:", isSmallScreen, "| innerWidth:", window.innerWidth);
+
+    // MOBILE: redireciona para página exclusiva
+    if (isMobileDevice || isSmallScreen) {
+        // Usa URL do Django e substitui /0/ por /id/
+        let urlMobile = CHAT_MOBILE_URL_TEMPLATE.replace("/0/", `/${id}/`);
+
+        // Fallback ultra seguro (se por algum motivo o template vier vazio)
+        if (!urlMobile || urlMobile.indexOf("/chat/m/") === -1) {
+            urlMobile = "/chat/m/" + id + "/";
+        }
+
+        console.log("Redirecionando para:", urlMobile);
+        window.location.href = urlMobile;
+        return;
+    }
+
+    // DESKTOP: abre na mesma página (sua lógica)
     destinatarioAtivo = id;
     document.getElementById('chat-nome-usuario').innerText = nome;
     document.getElementById('chat-vazio').style.display = 'none';
-    const janela = document.getElementById('janela-chat');
-    janela.style.display = 'flex';
-    
-    if (window.innerWidth <= 768) {
-        document.getElementById('sidebar-contatos').style.display = 'none';
-        // Trava o scroll do fundo para não bugar o touch
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        ajustarLayoutTeclado();
-    }
+    document.getElementById('janela-chat').style.display = 'flex';
 
     document.getElementById('chat-box').innerHTML = '';
-    const badge = document.getElementById(`notificacao-${id}`);
-    if (badge) badge.style.display = 'none';
-
     fetch(`/chat/buscar/${id}/`).then(res => res.json()).then(data => {
-        data.forEach(m => adicionarMensagemNaTela(m));
-        fetch(`/chat/marcar-lida/${id}/`);
+        data.forEach(m => {
+            if (typeof adicionarMensagemNaTela === "function") adicionarMensagemNaTela(m);
+        });
+        const chatBox = document.getElementById('chat-box');
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
     });
 }
 
-// Modifique sua função fecharChatMobile
+/** ============================
+ *  5) Render de Mensagens - preservado
+ *  ============================ */
+function adicionarMensagemNaTela(m) {
+    const box = document.getElementById('chat-box');
+    if (document.getElementById(`msg-${m.id}`)) return;
+
+    const souEu = String(m.remetente_id) === String(MEU_ID);
+    const div = document.createElement('div');
+    div.id = `msg-${m.id}`;
+    div.style.display = 'flex';
+    div.style.justifyContent = souEu ? 'flex-end' : 'flex-start';
+    div.style.marginBottom = '15px';
+    div.style.position = 'relative';
+
+    let horaExibicao = m.horario || (m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "");
+
+    let anexoHtml = '';
+    if (m.arquivo_url) {
+        if (/\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
+            anexoHtml = `<div class="waveform-container" onclick="event.stopPropagation()"><button class="play-btn" onclick="toggleAudio(${m.id})"><i class="fas fa-play" id="icon-${m.id}"></i></button><div id="wave-${m.id}" style="flex: 1; min-width: 160px;"></div></div>`;
+        } else if (/\.(jpeg|jpg|gif|png|webp)$/i.test(m.arquivo_url)) {
+            anexoHtml = `<img src="${m.arquivo_url}" style="max-width:200px; border-radius:10px; margin-top:5px; cursor:pointer;" onclick="window.open('${m.arquivo_url}')">`;
+        }
+    }
+
+    const menuBtn = souEu ? `<div style="position: absolute; right: 8px; top: 5px;"><span class="btn-opcoes" onclick="toggleMenu(event, ${m.id})">⋮</span><div id="menu-${m.id}" class="chat-menu"><div onclick="prepararEdicao(${m.id})">Editar</div><div onclick="deletarMsg(${m.id})" style="color:red;">Excluir</div></div></div>` : '';
+
+    div.innerHTML = `
+        <div style="max-width: 85%; padding: 10px 14px; border-radius: 15px; background: ${souEu ? '#007bff' : 'white'}; color: ${souEu ? 'white' : '#333'}; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            ${menuBtn}
+            <small style="opacity: 0.7; font-size: 0.65rem; display: block; margin-bottom: 3px;">${souEu ? 'Você' : m.remetente__username}</small>
+            <div class="msg-container">
+                <div id="texto-${m.id}">${m.conteudo}</div>
+                ${anexoHtml}
+                <span class="msg-horario" style="color: ${souEu ? '#e0e0e0' : '#888'}">${horaExibicao}</span>
+            </div>
+        </div>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+
+    if (m.arquivo_url && /\.(webm|wav|mp3|ogg|m4a|mp4)$/i.test(m.arquivo_url)) {
+        setTimeout(() => {
+            if (!wavesurfers[m.id]) {
+                wavesurfers[m.id] = WaveSurfer.create({
+                    container: `#wave-${m.id}`,
+                    waveColor: souEu ? '#80bdff' : '#ccc',
+                    progressColor: souEu ? '#fff' : '#007bff',
+                    height: 30,
+                    barWidth: 2
+                });
+                wavesurfers[m.id].load(m.arquivo_url);
+                wavesurfers[m.id].on('play', () => document.getElementById(`icon-${m.id}`).className = 'fas fa-pause');
+                wavesurfers[m.id].on('pause', () => document.getElementById(`icon-${m.id}`).className = 'fas fa-play');
+            }
+        }, 150);
+    }
+}
+
+/** ============================
+ *  6) fecharChatMobile (ÚNICO) - preservado/mesclado
+ *  ============================ */
 function fecharChatMobile() {
     document.getElementById('janela-chat').style.display = 'none';
     document.getElementById('sidebar-contatos').style.display = 'block';
-    // Destrava o scroll do site
+
+    // Destrava o scroll do site (sua melhoria)
     document.body.style.overflow = '';
     document.body.style.position = '';
+
     destinatarioAtivo = null;
 }
 
-    // Funções auxiliares (enviar, deletar, áudio) preservadas...
-    function enviar() {
-        const input = document.getElementById('chat-input');
-        const file = document.getElementById('file-input');
-        if (!destinatarioAtivo || (!input.value.trim() && !file.files[0])) return;
-        const fd = new FormData();
-        fd.append('destinatario_id', destinatarioAtivo);
-        fd.append('conteudo', input.value);
-        fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-        if (file.files[0]) fd.append('arquivo', file.files[0]);
-        fetch('/chat/enviar/', { method: 'POST', body: fd }).then(() => {
-            input.value = ''; file.value = '';
-            document.getElementById('indicador-anexo').style.display = 'none';
-        });
-    }
+/** ============================
+ *  7) Funções auxiliares - preservadas
+ *  ============================ */
+function enviar() {
+    const input = document.getElementById('chat-input');
+    const file = document.getElementById('file-input');
+    if (!destinatarioAtivo || (!input.value.trim() && !file.files[0])) return;
 
-    function verificarEnter(event) { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); enviar(); } }
-    function moverParaOTopo(uId) {
-        const lista = document.getElementById('lista-contatos');
-        const card = document.getElementById(`contato-${uId}`);
-        if (card && lista) lista.prepend(card);
+    const fd = new FormData();
+    fd.append('destinatario_id', destinatarioAtivo);
+    fd.append('conteudo', input.value);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    if (file.files[0]) fd.append('arquivo', file.files[0]);
+
+    fetch('/chat/enviar/', { method: 'POST', body: fd }).then(() => {
+        input.value = '';
+        file.value = '';
+        document.getElementById('indicador-anexo').style.display = 'none';
+    });
+}
+
+function verificarEnter(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        enviar();
     }
-    function toggleAudio(id) { if(wavesurfers[id]) wavesurfers[id].playPause(); }
-    function toggleMenu(e, id) { e.stopPropagation(); document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none'); document.getElementById(`menu-${id}`).style.display = 'block'; }
-    window.onclick = () => document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+}
+
+function moverParaOTopo(uId) {
+    const lista = document.getElementById('lista-contatos');
+    const card = document.getElementById(`contato-${uId}`);
+    if (card && lista) lista.prepend(card);
+}
+
+function toggleAudio(id) {
+    if(wavesurfers[id]) wavesurfers[id].playPause();
+}
+
+function toggleMenu(e, id) {
+    e.stopPropagation();
+    document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+    document.getElementById(`menu-${id}`).style.display = 'block';
+}
+
+window.onclick = () => document.querySelectorAll('.chat-menu').forEach(m => m.style.display = 'none');
+
+// Filtro de busca
+document.getElementById('input-pesquisa').addEventListener('input', e => {
+    const termo = e.target.value.toLowerCase();
+    Array.from(document.getElementById('lista-contatos').children).forEach(c => {
+        c.style.display = c.innerText.toLowerCase().includes(termo) ? "" : "none";
+    });
+});
+
+document.getElementById('file-input').addEventListener('change', function() {
+    if (this.files[0]) {
+        document.getElementById('nome-arquivo').innerText = this.files[0].name;
+        document.getElementById('indicador-anexo').style.display = 'flex';
+    }
+});
+
+function removerAnexo() {
+    document.getElementById('file-input').value = "";
+    document.getElementById('indicador-anexo').style.display = 'none';
+}
+
+/** ============================
+ * 8) EDITAR E EXCLUIR MENSAGENS
+ * ============================ */
+
+function deletarMsg(id) {
+    if (confirm('Deseja realmente excluir esta mensagem?')) {
+        fetch(`/chat/excluir/${id}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'sucesso') {
+                const msgElement = document.getElementById(`msg-${id}`);
+                if (msgElement) msgElement.remove();
+            } else {
+                alert(data.message || 'Erro ao excluir mensagem.');
+            }
+        })
+        .catch(err => console.error("Erro ao excluir:", err));
+    }
+}
+
+function prepararEdicao(id) {
+    const textoDiv = document.getElementById(`texto-${id}`);
+    const conteudoOriginal = textoDiv.innerText;
     
-    // Filtro de busca
-    document.getElementById('input-pesquisa').addEventListener('input', e => {
-        const termo = e.target.value.toLowerCase();
-        Array.from(document.getElementById('lista-contatos').children).forEach(c => {
-            c.style.display = c.innerText.toLowerCase().includes(termo) ? "" : "none";
-        });
-    });
+    // Transforma o texto em um campo de input
+    const inputHtml = `
+        <div id="edit-container-${id}" style="display: flex; gap: 5px; margin-top: 5px;">
+            <input type="text" id="input-edit-${id}" value="${conteudoOriginal}" 
+                   style="flex: 1; border-radius: 10px; border: 1px solid #ccc; padding: 4px 8px; color: #333; font-size: 0.85rem;">
+            <button onclick="confirmarEdicao(${id})" style="background: #28a745; color: white; border: none; border-radius: 5px; padding: 0 8px;"><i class="fas fa-check"></i></button>
+            <button onclick="cancelarEdicao(${id}, '${conteudoOriginal}')" style="background: #dc3545; color: white; border: none; border-radius: 5px; padding: 0 8px;"><i class="fas fa-times"></i></button>
+        </div>
+    `;
+    textoDiv.innerHTML = inputHtml;
+    document.getElementById(`input-edit-${id}`).focus();
+}
 
-    document.getElementById('file-input').addEventListener('change', function() {
-        if (this.files[0]) {
-            document.getElementById('nome-arquivo').innerText = this.files[0].name;
-            document.getElementById('indicador-anexo').style.display = 'flex';
+function confirmarEdicao(id) {
+    const novoConteudo = document.getElementById(`input-edit-${id}`).value;
+    
+    if (!novoConteudo.trim()) return;
+
+    const fd = new FormData();
+    fd.append('conteudo', novoConteudo);
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch(`/chat/editar/${id}/`, {
+        method: 'POST',
+        body: fd
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === 'sucesso') {
+            const textoDiv = document.getElementById(`texto-${id}`);
+            textoDiv.innerText = novoConteudo;
+            // Adiciona o selo de editada se não existir
+            const container = textoDiv.closest('.msg-container');
+            if (!container.innerHTML.includes('(editada)')) {
+                container.querySelector('.msg-horario').insertAdjacentHTML('beforebegin', '<small style="font-size:0.6rem; opacity:0.6; margin-right:5px;">(editada)</small>');
+            }
+        } else {
+            alert('Erro ao salvar edição.');
         }
-    });
-    function removerAnexo() { document.getElementById('file-input').value = ""; document.getElementById('indicador-anexo').style.display = 'none'; }
+    })
+    .catch(err => console.error("Erro ao editar:", err));
+}
+
+function cancelarEdicao(id, textoOriginal) {
+    document.getElementById(`texto-${id}`).innerText = textoOriginal;
+}
 </script>
 {% endblock %}

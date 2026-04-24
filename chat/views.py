@@ -1,29 +1,43 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max, Q, Count
+from django.db.models import Max, Q, Count, Value
 from .models import Mensagem
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.db.models.functions import Greatest
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from chat import models
+from django.db.models.functions import Greatest, Coalesce
+from datetime import datetime
 
 @login_required
 def chat_lista(request):
-    # Pega a última mensagem enviada POR você e a última enviada PARA você
-    usuarios = User.objects.exclude(id=request.user.id).annotate(
-        ultima_enviada=Max('enviadas__timestamp', filter=Q(enviadas__destinatario=request.user)),
-        ultima_recebida=Max('recebidas__timestamp', filter=Q(recebidas__remetente=request.user))
-    ).annotate(
-        # Escolhe a maior (mais recente) entre as duas datas
-        ultima_interacao=Greatest('ultima_enviada', 'ultima_recebida')
-    ).order_by('-ultima_interacao')
+    # Definimos uma data muito antiga para usuários que nunca conversaram ficarem por último
+    data_minima = Value(datetime(2000, 1, 1))
 
-    for u in usuarios:
-        u.nao_lidas = Mensagem.objects.filter(remetente=u, destinatario=request.user, lida=False).count()
-    
+    # 1. Buscamos usuários anotando a data da última interação e mensagens não lidas
+    # IMPORTANTE: Verifique se os related_name no seu model são 'enviadas' e 'recebidas'
+    usuarios = User.objects.exclude(id=request.user.id).annotate(
+        # Última mensagem que ELE me enviou
+        ultima_recebida_de_mim=Max('recebidas__timestamp', filter=Q(recebidas__remetente=request.user)),
+        # Última mensagem que EU enviei para ele
+        ultima_enviada_por_mim=Max('enviadas__timestamp', filter=Q(enviadas__destinatario=request.user)),
+        
+        # Conta mensagens não lidas enviadas por ele para mim
+        nao_lidas=Count(
+            'recebidas',
+            filter=Q(recebidas__destinatario=request.user, recebidas__lida=False)
+        )
+    ).annotate(
+        # Pega a maior data entre as duas (interação mais recente)
+        # Coalesce garante que se for None, use a data_minima para não quebrar a ordenação
+        ultima_interacao=Coalesce(
+            Greatest('ultima_recebida_de_mim', 'ultima_enviada_por_mim'),
+            data_minima
+        )
+    ).order_by('-ultima_interacao', 'username')
+
     return render(request, 'chat/lista.html', {'usuarios': usuarios})
 
 @login_required
@@ -176,7 +190,10 @@ def marcar_como_lida(request, user_id):
     
     return JsonResponse({'status': 'ok'})
 
-@login_required
-def chat_janela_mobile(request, destinatario_id):
+def janela_mobile(request, destinatario_id):
     destinatario = get_object_or_404(User, id=destinatario_id)
-    return render(request, 'chat/chat_mobile.html', {'destinatario': destinatario})
+    # Adicionamos uma flag no contexto para o HTML saber que é mobile
+    return render(request, 'chat/chat_mobile.html', {
+        'destinatario': destinatario,
+        'modo_mobile': True 
+    })

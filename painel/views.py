@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 from django.db.models import Count, Prefetch, Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,13 +15,17 @@ import json
 from django.db import transaction
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
-
+from django.db.models import Max
 from rotas.models import Notificacao
+from django.contrib.auth.decorators import user_passes_test
+from collections import defaultdict
 
 
 def _is_motoboy(user):
     return user.groups.filter(name="Motoboy").exists()
 
+def _is_operador(user):
+    return user.groups.filter(name="Operador").exists()
 
 def _parse_date(s: str):
     # s no formato YYYY-MM-DD
@@ -78,7 +82,13 @@ def home(request):
     # 2. IDENTIFICAÇÃO DO USUÁRIO (SEGURANÇA)
     loja_logada = _get_loja_usuario(request.user)
     is_motoboy = _is_motoboy(request.user)
+    is_operador = _is_operador(request.user)
     is_admin = request.user.is_staff
+
+    # Operador deve ver rotas (não tratar como loja)
+    if is_operador:
+        loja_logada = None
+
     
     if is_motoboy:
         rotas_qs = rotas_qs.filter(motoboy=request.user)
@@ -132,7 +142,10 @@ def home(request):
             total_lojas=Count("paradas", distinct=True),
             lojas_coletadas=Count("paradas", filter=Q(paradas__status="coletado"), distinct=True),
         ).order_by("data", "id") if not loja_logada else [],
-        
+        "is_admin": is_admin,
+        "is_operador": is_operador,
+        "is_motoboy": is_motoboy,
+        "loja_logada": loja_logada,
         "ultimas_transferencias": transf_qs.order_by("-id")[:5],
         "hoje": timezone.localdate(),
     }
@@ -145,53 +158,94 @@ def home(request):
 @permission_required("rotas.view_rota", raise_exception=True)
 def rotas_hoje(request):
     hoje = timezone.localdate()
+    mode, filt = _get_date_filter(request)
 
-    # No seu painel/views.py, ajuste a linha do prefetch:
     rotas = (
-        Rota.objects.filter(data=hoje)
-        .select_related("motoboy")
+        Rota.objects.select_related("motoboy")
         .prefetch_related(
             Prefetch("paradas", queryset=Parada.objects.select_related("loja").order_by("ordem")),
-            "transferencias" # Adicione esta linha aqui
+            "transferencias",
         )
     )
+
+    # Filtro por data (mesmo padrão do Dashboard)
+    if mode == "range":
+        start, end = filt
+        rotas = rotas.filter(data__range=(start, end))
+        periodo_label = f"{start.strftime('%d/%m/%Y')} até {end.strftime('%d/%m/%Y')}"
+    elif mode == "all":
+        periodo_label = "Todas as rotas"
+    elif mode == "multi":
+        periodo_label = ", ".join(d.strftime("%d/%m/%Y") for d in (filt or [])) or hoje.strftime("%d/%m/%Y")
+        rotas = rotas.filter(data__in=filt)
+    else:
+        # mode == "day"
+        day = (filt or [hoje])[0]
+        rotas = rotas.filter(data=day)
+        periodo_label = day.strftime("%d/%m/%Y")
 
     # ✅ Motoboy vê só as rotas dele
     if _is_motoboy(request.user):
         rotas = rotas.filter(motoboy=request.user)
 
-    return render(request, "painel/rotas_hoje.html", {"rotas": rotas, "hoje": hoje})
+    rotas = rotas.order_by("data", "id")
+
+    context = {
+        "rotas": rotas,
+        "hoje": hoje,
+        "mode": mode,
+        "filt": filt,
+        "periodo_label": periodo_label,
+    }
+    return render(request, "painel/rotas_hoje.html", context)
 
 
 @login_required
 @permission_required("rotas.view_rota", raise_exception=True)
 def rota_detalhe(request, rota_id):
-    rota = get_object_or_404(Rota.objects.select_related("motoboy"), id=rota_id)
+    rota = get_object_or_404(
+        Rota.objects.select_related("motoboy"),
+        id=rota_id
+    )
 
+    # Se motoboy, só pode ver a própria rota
     if _is_motoboy(request.user) and rota.motoboy_id != request.user.id:
         return HttpResponseForbidden("Você não pode acessar esta rota.")
 
     paradas = rota.paradas.select_related("loja").order_by("ordem")
 
-    # Dentro do loop 'for parada in paradas:' da sua função rota_detalhe
-    for parada in paradas:
-        # Busca a transferência específica para esta parada
-        t_origem = rota.transferencias.filter(loja_origem=parada.loja, status='pendente').first()
-        t_transito = rota.transferencias.filter(loja_destino=parada.loja, status='em_transito').first()
+    # ✅ Puxa TODAS as transferências dessa rota 1x e agrupa por loja origem/destino
+    transfs = list(
+        rota.transferencias.select_related("loja_origem", "loja_destino")
+        .order_by("-id")
+    )
 
-        # Anexa o objeto da transferência à parada para usar no HTML
-        parada.transf_para_coletar = t_origem
-        parada.transf_para_entregar = t_transito
+    por_origem = defaultdict(list)
+    por_destino = defaultdict(list)
 
-        # Lógica de status visual que você já tem
-        if rota.transferencias.filter(loja_origem=parada.loja, status__in=['em_transito', 'confirmada']).exists():
-            parada.status_real = "Coletado"
-        elif rota.transferencias.filter(loja_destino=parada.loja, status='confirmada').exists():
-            parada.status_real = "Entregue"
-        else:
-            parada.status_real = "Pendente"
+    for t in transfs:
+        if t.loja_origem_id:
+            por_origem[t.loja_origem_id].append(t)
+        if t.loja_destino_id:
+            por_destino[t.loja_destino_id].append(t)
 
-    return render(request, "painel/rota_detalhe.html", {"rota": rota, "paradas": paradas})
+    # ✅ Anexa no objeto parada as listas (pra usar direto no template)
+    for p in paradas:
+        loja_id = p.loja_id
+
+        # pedidos para COLETAR nessa loja
+        p.transfs_coletar = por_origem.get(loja_id, [])
+
+        # pedidos para ENTREGAR nessa loja
+        p.transfs_entregar = por_destino.get(loja_id, [])
+
+        p.qtd_coletar = len(p.transfs_coletar)
+        p.qtd_entregar = len(p.transfs_entregar)
+
+    return render(request, "painel/rota_detalhe.html", {
+        "rota": rota,
+        "paradas": paradas,
+    })
 
 @login_required
 @permission_required("rotas.add_parada", raise_exception=True)  # operador/admin
@@ -225,13 +279,16 @@ def adicionar_loja_rota(request, rota_id):
 # =========================
 @login_required
 def marcar_coletado(request, parada_id):
-    parada = get_object_or_404(Parada.objects.select_related("rota"), id=parada_id)
+    parada = get_object_or_404(
+        Parada.objects.select_related("rota", "loja", "rota__motoboy"),
+        id=parada_id
+    )
 
     # aceitar só POST para alterar estado
     if request.method != "POST":
         return HttpResponseForbidden("Use POST para marcar como coletado.")
 
-    # permissão
+    # permissão (mantém exatamente sua lógica)
     if request.user.has_perm("rotas.change_parada"):
         pode = True
     elif _is_motoboy(request.user) and parada.rota.motoboy_id == request.user.id:
@@ -242,11 +299,31 @@ def marcar_coletado(request, parada_id):
     if not pode:
         return HttpResponseForbidden("Sem permissão para marcar esta coleta.")
 
-    parada.status = "coletado"
-    # ⚠️ Só funciona se você tiver esse campo no model Parada
-    parada.collected_at = timezone.now()
-    parada.save(update_fields=["status", "collected_at"])
+    with transaction.atomic():
+        # 1) Marca a parada como coletada
+        parada.status = "coletado"
 
+        # Só atualiza collected_at se existir no model
+        if hasattr(parada, "collected_at"):
+            parada.collected_at = timezone.now()
+            parada.save(update_fields=["status", "collected_at"])
+        else:
+            parada.save(update_fields=["status"])
+
+        # 2) ✅ UX: se a parada foi coletada, todas as transferências dessa ROTA
+        # cuja ORIGEM é essa loja e ainda estão pendentes viram "em_transito"
+        Transferencia.objects.filter(
+            rota=parada.rota,
+            loja_origem=parada.loja,
+            status="pendente"
+        ).update(
+            status="em_transito",
+            motorista=request.user,              # opcional mas útil
+            confirmado_em=timezone.now(),
+            confirmado_por=request.user
+        )
+
+    messages.success(request, f"{parada.loja.nome} marcada como coletada. Transferências da origem foram atualizadas para Em Trânsito.")
     return redirect("painel:rota_detalhe", rota_id=parada.rota_id)
 
 
@@ -272,9 +349,9 @@ def criar_rota(request):
                 rota = Rota.objects.create(
                     data=hoje,
                     motoboy=motoboy,
-                    status="aberta"
+                    status="em_rota",
+                    created_by=request.user,   
                 )
-
                 # 2. Cria as Paradas Automaticamente
                 for index, loja in enumerate(lojas_selecionadas, start=1):
                     Parada.objects.create(
@@ -289,7 +366,10 @@ def criar_rota(request):
                 Notificacao.objects.create(
                     usuario=motoboy,
                     titulo="Nova Rota Atribuída! 🚚",
-                    mensagem=f"Você recebeu uma nova rota com {len(lojas_selecionadas)} paradas para hoje ({hoje.strftime('%d/%m')})."
+                    mensagem=(
+                        f"{request.user.username} criou uma rota com {len(lojas_selecionadas)} paradas "
+                        f"para hoje ({hoje.strftime('%d/%m')})."
+                    )
                 )
 
             messages.success(request, f"Rota criada com {len(lojas_selecionadas)} paradas e motorista notificado!")
@@ -363,29 +443,89 @@ def _is_motoboy(user):
 @login_required
 @permission_required("rotas.view_transferencia", raise_exception=True)
 def transferencias_lista(request):
-    # Base: notas sem rota. IMPORTANTE: Sua imagem mostra status "em_transito". 
-    # Se ela já estiver "em_transito", ela NÃO aparece nesta lista por causa do filtro abaixo!
-    transferencias = Transferencia.objects.filter(rota__isnull=True).order_by('-criado_em')
+    from django.utils.dateparse import parse_date
+    from django.utils import timezone
+    from django.db.models import Q
 
-    tamanho = request.GET.get('tamanho')
+    hoje = timezone.localdate()
+
+    loja_logada = _get_loja_usuario(request.user)
+    is_admin = request.user.is_staff
+    is_motoboy = _is_motoboy(request.user)
+    is_operador = _is_operador(request.user)
+
+    # ✅ NOVO: base é "não entregue"
+    # Antes era: rota__isnull=True
+    qs = (
+        Transferencia.objects
+        .select_related("loja_origem", "loja_destino", "rota", "rota__motoboy")
+        .exclude(status="entregue")   # <<< TROQUE se o valor do seu status for outro
+        .order_by('-criado_em')
+    )
+
+    # ===== REGRA DE VISUALIZAÇÃO =====
+    if loja_logada and not (is_admin or is_motoboy or is_operador):
+        qs = qs.filter(
+            Q(loja_origem=loja_logada) |
+            Q(loja_destino=loja_logada)
+        )
+
+    # ===== FILTRO POR LOJA =====
     loja_id = request.GET.get('loja')
-    
-    # Filtro de Porte
-    if tamanho:
-        transferencias = transferencias.filter(tamanho_carga=tamanho)
-
-    # Filtro de Loja
     if loja_id:
-        transferencias = transferencias.filter(loja_destino_id=loja_id)
+        qs = qs.filter(
+            Q(loja_origem_id=loja_id) |
+            Q(loja_destino_id=loja_id)
+        )
 
-    # REMOVA OU COMENTE esta linha se quiser que o Admin veja tudo sem restrição automática
-    # if _is_motoboy(request.user) and not request.user.is_staff:
-    #     transferencias = transferencias.filter(tamanho_carga="pequeno")
+    # ===== FILTRO POR TIPO =====
+    tamanho = request.GET.get('tamanho')
+    if tamanho:
+        qs = qs.filter(tamanho_carga=tamanho)
+
+    # ===== FILTRO DE DATA =====
+    data = request.GET.get('data')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+
+    if data:
+        parsed = parse_date(data)
+        if parsed:
+            qs = qs.filter(criado_em__date=parsed)
+    else:
+        inicio = parse_date(data_inicio) if data_inicio else None
+        fim = parse_date(data_fim) if data_fim else None
+
+        if inicio and fim:
+            qs = qs.filter(criado_em__date__range=(inicio, fim))
+        elif inicio:
+            qs = qs.filter(criado_em__date__gte=inicio)
+        elif fim:
+            qs = qs.filter(criado_em__date__lte=fim)
+
+    # ✅ Divide em 2 abas/seções:
+    transferencias_disponiveis = qs.filter(rota__isnull=True)
+    transferencias_em_rota = qs.filter(rota__isnull=False)
+
+    # micro ajuste do aviso da rota do dia (se quiser manter)
+    rota_ativa = None
+    if is_motoboy:
+        rota_ativa = (
+            Rota.objects
+            .filter(motoboy=request.user, data=hoje, status__in=["aberta", "em_rota"])
+            .order_by("-id")
+            .first()
+        )
 
     return render(request, "painel/transferencias_lista.html", {
-        "transferencias": transferencias,
+        "transferencias_disponiveis": transferencias_disponiveis,
+        "transferencias_em_rota": transferencias_em_rota,
         "lojas": Loja.objects.filter(ativa=True).order_by('nome'),
+        "rota_ativa": rota_ativa,
+        "is_motoboy": is_motoboy,   # ✅ ADICIONE ISSO
     })
+
+
 @login_required
 @permission_required("rotas.add_transferencia", raise_exception=True)
 def transferencia_nova(request):
@@ -396,8 +536,14 @@ def transferencia_nova(request):
             t = form.save(commit=False)
             t.criado_por = request.user
             t.status = "pendente"
+
+            user_loja = getattr(request.user, "loja_perfil", None)
+            if user_loja and not request.user.is_staff:
+                t.tipo = "saida"
+                t.loja_origem = user_loja
+
             t.save()
-            messages.success(request, f"Transferência criada com sucesso!") 
+            messages.success(request, f"Transferência criada com sucesso!")
             return redirect("painel:transferencias_lista")
     else:
         # PASSE O USER AQUI NO GET (Isso trava a lista na tela)
@@ -424,31 +570,35 @@ def transferencia_detalhe(request, transferencia_id):
     return render(request, "painel/transferencia_detalhe.html", {"t": t})
 
 @login_required
-def transferencia_confirmar(request, transferencia_id):
-    t = get_object_or_404(Transferencia, id=transferencia_id)
+@permission_required("rotas.change_transferencia", raise_exception=True)
+@require_POST
+def transferencia_confirmar_cd(request, pk):
+    t = get_object_or_404(Transferencia, pk=pk)
 
-    # regra de permissão existente
-    pode = request.user.has_perm("rotas.change_transferencia") or \
-           (_is_motoboy(request.user) and t.motorista_id == request.user.id)
+    # Só permite confirmar CD se já foi entregue pelo motoboy
+    if t.status != "aguardando_cd":
+        messages.error(request, "Esta transferência ainda não está aguardando confirmação do CD.")
+        return redirect("painel:transferencia_detalhe", transferencia_id=t.id)
 
-    if not pode:
-        return HttpResponseForbidden("Sem permissão para confirmar.")
+    obs = (request.POST.get("obs") or "").strip()
 
-    if request.method != "POST":
-        return HttpResponseForbidden("Use POST.")
+    t.confirmada_cd = True
+    t.confirmada_cd_em = timezone.now()
+    t.confirmada_cd_por = request.user
+    t.obs_confirmacao_cd = obs
 
-    if t.status != "confirmada": # ✅ Ajustado para string direta
-        t.status = "confirmada"
-        t.confirmado_em = timezone.now()
-        t.confirmado_por = request.user
-        t.save(update_fields=["status", "confirmado_em", "confirmado_por"])
+    # ✅ Agora sim finaliza
+    t.status = "confirmada"
+    t.save(update_fields=[
+        "confirmada_cd", "confirmada_cd_em", "confirmada_cd_por",
+        "obs_confirmacao_cd", "status"
+    ])
 
+    messages.success(request, "Entrada confirmada no CD. Protocolo finalizado!")
     return redirect("painel:transferencia_detalhe", transferencia_id=t.id)
 
-from django.contrib.auth.decorators import user_passes_test
 
 
-@user_passes_test(lambda u: u.is_superuser)
 @login_required
 def transferencia_excluir(request, transferencia_id):
     # ✅ Apenas Admin (superuser) pode excluir
@@ -496,47 +646,92 @@ from django.db import transaction
 
 @login_required
 def criar_rota_motorista(request):
-    if request.method == "POST":
-        ids_selecionados = request.POST.getlist('transferencias_selecionadas')
-        
-        if not ids_selecionados:
+    if request.method != "POST":
+        return redirect('painel:transferencias_lista')
+
+    ids_selecionados = request.POST.getlist('transferencias_selecionadas')
+    if not ids_selecionados:
+        return redirect('painel:transferencias_lista')
+
+    hoje = timezone.localdate()
+
+    with transaction.atomic():
+        # 1) Pega SOMENTE transferências ainda sem rota (evita duplicar)
+        qs_transferencias = (
+            Transferencia.objects
+            .select_related("loja_origem", "loja_destino")
+            .filter(id__in=ids_selecionados, rota__isnull=True)
+        )
+
+        # ✅ CONGELA para não “sumir” depois do update
+        transferencias = list(qs_transferencias)
+
+        if not transferencias:
+            # tudo já estava vinculado em outra rota, ou ids inválidos
             return redirect('painel:transferencias_lista')
 
-        with transaction.atomic():
-            # 1. Cria a Rota
-            nova_rota = Rota.objects.create(
+        # 2) Se já existe rota do motoboy HOJE aberta/em_rota, reaproveita
+        rota_existente = (
+            Rota.objects
+            .filter(motoboy=request.user, data=hoje, status__in=["aberta", "em_rota"])
+            .order_by("-id")
+            .first()
+        )
+
+        if rota_existente:
+            rota = rota_existente
+        else:
+            # 3) Se não existe, cria nova
+            rota = Rota.objects.create(
                 nome=f"Rota {timezone.now().strftime('%d/%m %H:%M')}",
                 motoboy=request.user,
-                status="em_rota"
+                status="em_rota",
+                created_by=request.user,  # mantém
+                data=hoje,                # ✅ importante para aparecer no filtro do dia
             )
 
-            # 2. Busca as transferências selecionadas
-            transferencias = Transferencia.objects.filter(id__in=ids_selecionados)
-            
-            # Usaremos um dicionário para garantir que cada loja seja uma parada única
-            lojas_unicas = {}
+        # 4) Vincula todas as transferências à rota escolhida (bulk update)
+        ids_para_vincular = [t.id for t in transferencias]
+        Transferencia.objects.filter(id__in=ids_para_vincular).update(rota=rota)
 
-            for trans in transferencias:
-                # Vincula a transferência à rota no banco
-                trans.rota = nova_rota
-                trans.save()
-                
-                # Registra as lojas envolvidas para criar as paradas depois
-                lojas_unicas[trans.loja_origem.id] = trans.loja_origem
-                lojas_unicas[trans.loja_destino.id] = trans.loja_destino
+        # 5) Garante paradas únicas e cria apenas as que faltarem
+        lojas_unicas_em_ordem = {}
+        for trans in transferencias:
+            if trans.loja_origem_id:
+                lojas_unicas_em_ordem[trans.loja_origem.id] = trans.loja_origem
+            if trans.loja_destino_id:
+                lojas_unicas_em_ordem[trans.loja_destino.id] = trans.loja_destino
 
-            # 3. CRIA AS PARADAS (Isso preenche o rota.paradas que sua view de detalhe busca)
-            for i, (loja_id, loja_obj) in enumerate(lojas_unicas.items()):
-                Parada.objects.create(
-                    rota=nova_rota,
-                    loja=loja_obj,
-                    ordem=i + 1,
-                    status="pendente"
-                )
+        lojas_ids = list(lojas_unicas_em_ordem.keys())
+
+        ja_existem = set(
+            Parada.objects
+            .filter(rota=rota, loja_id__in=lojas_ids)
+            .values_list("loja_id", flat=True)
+        )
+
+        ultima_ordem = (
+            Parada.objects
+            .filter(rota=rota)
+            .aggregate(m=Max("ordem"))
+            .get("m") or 0
+        )
+
+        for loja_id, loja_obj in lojas_unicas_em_ordem.items():
+            if loja_id in ja_existem:
+                continue
+            ultima_ordem += 1
+            Parada.objects.create(
+                rota=rota,
+                loja=loja_obj,
+                ordem=ultima_ordem,
+                status="pendente"
+            )
 
         return redirect('painel:rotas_hoje')
-    
+
     return redirect('painel:transferencias_lista')
+
 
 @login_required
 def dashboard(request):
@@ -585,29 +780,42 @@ from django.core.exceptions import PermissionDenied
 
 @login_required
 def confirmar_coleta(request, pk):
-
     is_motorista = request.user.groups.filter(name='Motoboy').exists()
     if not (is_motorista or request.user.is_staff):
         messages.error(request, "Acesso negado: Somente motoristas podem confirmar a coleta.")
         return redirect('painel:transferencia_detalhe', transferencia_id=pk)
 
     transferencia = get_object_or_404(Transferencia, pk=pk)
+
+    # Se já está em trânsito ou além, não precisa re-confirmar
+    if transferencia.status != "pendente":
+        messages.info(request, "Esta transferência já foi coletada ou está em andamento.")
+        return redirect('painel:transferencia_detalhe', transferencia_id=pk)
+
     transferencia.status = "em_transito"
-    transferencia.save()
-    messages.success(request, "Carga coletada com sucesso!")
+    transferencia.motorista = request.user
+    transferencia.confirmado_em = timezone.now()
+    transferencia.confirmado_por = request.user
+    transferencia.save(update_fields=["status", "motorista", "confirmado_em", "confirmado_por"])
+
+    messages.success(request, "Carga coletada com sucesso! Status: Em Trânsito.")
     return redirect('painel:transferencia_detalhe', transferencia_id=pk)
 
 @login_required
 def confirmar_recebimento(request, pk):
     transferencia = get_object_or_404(Transferencia, pk=pk)
-    
+
     if transferencia.status != 'em_transito':
         messages.error(request, "Ação negada: A carga precisa ser coletada antes de ser entregue.")
         return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
 
-    transferencia.status = "confirmada"
-    transferencia.save()
-    messages.success(request, "Entrega confirmada com sucesso!")
+    # ✅ Aqui NÃO finaliza. Só marca que foi entregue pelo motoboy e aguarda CD.
+    transferencia.status = "aguardando_cd"
+    transferencia.confirmado_em = timezone.now()
+    transferencia.confirmado_por = request.user
+    transferencia.save(update_fields=["status", "confirmado_em", "confirmado_por"])
+
+    messages.success(request, "Entrega registrada. Aguardando confirmação de entrada no CD.")
     return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
 
 @login_required
@@ -622,3 +830,77 @@ def marcar_notificacao_lida(request, notificacao_id):
 def notificacoes_lista(request):
     notificacoes = request.user.notificacoes.all()
     return render(request, 'painel/notificacoes_lista.html', {'notificacoes': notificacoes})
+
+@login_required
+@require_POST
+def bulk_confirmar_coleta(request, rota_id):
+    """
+    Confirma coleta em lote:
+    pendente -> em_transito
+    """
+    rota = get_object_or_404(Rota, id=rota_id)
+
+    # segurança: motoboy só mexe na própria rota
+    if _is_motoboy(request.user) and rota.motoboy_id != request.user.id:
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
+
+    ids = request.POST.getlist("ids[]") or request.POST.getlist("ids")
+    if not ids:
+        return JsonResponse({"ok": False, "error": "Nenhum ID enviado."}, status=400)
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        qs = Transferencia.objects.filter(
+            id__in=ids,
+            rota=rota,
+            status="pendente"
+        )
+
+        total = qs.count()
+
+        qs.update(
+            status="em_transito",
+            motorista=request.user,
+            confirmado_em=now,
+            confirmado_por=request.user
+        )
+
+    return JsonResponse({"ok": True, "updated": total})
+
+
+@login_required
+@require_POST
+def bulk_confirmar_entrega(request, rota_id):
+    """
+    Confirma entrega em lote:
+    em_transito -> aguardando_cd
+    """
+    rota = get_object_or_404(Rota, id=rota_id)
+
+    # segurança: motoboy só mexe na própria rota
+    if _is_motoboy(request.user) and rota.motoboy_id != request.user.id:
+        return JsonResponse({"ok": False, "error": "Sem permissão."}, status=403)
+
+    ids = request.POST.getlist("ids[]") or request.POST.getlist("ids")
+    if not ids:
+        return JsonResponse({"ok": False, "error": "Nenhum ID enviado."}, status=400)
+
+    now = timezone.now()
+
+    with transaction.atomic():
+        qs = Transferencia.objects.filter(
+            id__in=ids,
+            rota=rota,
+            status="em_transito"
+        )
+
+        total = qs.count()
+
+        qs.update(
+            status="aguardando_cd",
+            confirmado_em=now,
+            confirmado_por=request.user
+        )
+
+    return JsonResponse({"ok": True, "updated": total})

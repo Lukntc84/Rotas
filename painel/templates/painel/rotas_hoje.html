@@ -1,13 +1,15 @@
 {% extends 'painel/base.html' %}
 
 {% block title %}
-  Rotas de hoje
+  Rotas
 {% endblock %}
+
 {% block header_title %}
   Painel de Rotas
 {% endblock %}
+
 {% block header_sub %}
-  Hoje: {{ hoje }}
+  Período: {{ periodo_label }}
 {% endblock %}
 
 {% block header_actions %}
@@ -18,9 +20,54 @@
 {% endblock %}
 
 {% block content %}
+  <div class="card" style="margin-bottom: 16px;">
+    <div class="card-title">
+      <h2>Filtro de dias</h2>
+    </div>
+
+    <form method="get" class="form" id="filtro-form" style="padding-top: 12px;">
+      <div class="form-row">
+        <label class="label">Modo</label>
+        <select class="input" name="mode" id="mode">
+          <option value="day"   {% if mode == "day" %}selected{% endif %}>Um dia</option>
+          <option value="range" {% if mode == "range" %}selected{% endif %}>Intervalo</option>
+          <option value="multi" {% if mode == "multi" %}selected{% endif %}>Vários dias</option>
+          <option value="all"   {% if mode == "all" %}selected{% endif %}>Todos</option>
+        </select>
+      </div>
+
+      <div class="form-row js-mode js-day">
+        <label class="label">Dia</label>
+        <input class="input" type="date" name="day" value="{{ request.GET.day|default:hoje|date:'Y-m-d' }}">
+      </div>
+
+      <div class="form-row js-mode js-range">
+        <label class="label">Início</label>
+        <input class="input" type="date" name="start" value="{{ request.GET.start|default:'' }}">
+      </div>
+
+      <div class="form-row js-mode js-range">
+        <label class="label">Fim</label>
+        <input class="input" type="date" name="end" value="{{ request.GET.end|default:'' }}">
+      </div>
+
+      <div class="form-row js-mode js-multi">
+        <label class="label">Dias (YYYY-MM-DD separados por vírgula)</label>
+        <input class="input" type="text" name="days" placeholder="2026-02-19, 2026-02-20" value="{{ request.GET.days|default:'' }}">
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" type="submit">Aplicar</button>
+        <a class="btn" href="?mode=day&day={{ hoje|date:'Y-m-d' }}">Hoje</a>
+        <a class="btn" href="#" onclick="event.preventDefault(); shiftDay(-1)">Ontem</a>
+        <a class="btn" href="#" onclick="event.preventDefault(); quickLast7()">Últimos 7 dias</a>
+      </div>
+    </form>
+  </div>
+
   <div class="card">
     <div class="card-title">
-      <h2>Rotas de hoje</h2>
+      <h2>Rotas</h2>
       <span class="badge">{{ rotas|length }} rota(s)</span>
     </div>
 
@@ -31,42 +78,92 @@
             <a class="title-link" href="{% url 'painel:rota_detalhe' r.id %}">{{ r.nome|default:'Rota sem nome' }} #{{ r.id }}</a>
             <div class="small muted">Motoboy: {{ r.motoboy.username }}</div>
 
-<div class="small" style="margin-top: 5px;">
-  {# 1. Primeiro, verifica se existem Transferências vinculadas #}
-  {% if r.transferencias.all %}
-    {% for t in r.transferencias.all %}
-      <strong style="color: #3182ce;">{{ t.loja_origem.nome }} → {{ t.loja_destino.nome }}</strong>
-      {% if not forloop.last %} | {% endif %}
-    {% endfor %}
-  
-  {# 2. Se não houver transferências, verifica se existem Paradas (Lojas) #}
-  {% elif r.paradas.all %}
-    {% for p in r.paradas.all %}
-      <span style="color: #4a5568;">{{ p.loja.nome }}</span>
-      {% if not forloop.last %} • {% endif %}
-    {% endfor %}
+            <div class="small" style="margin-top: 5px;">
+              {% if r.transferencias.all %}
+                {% for t in r.transferencias.all %}
+                  <strong style="color: #3182ce;">{{ t.loja_origem.nome }} → {{ t.loja_destino.nome }}</strong>
+                  {% if not forloop.last %} | {% endif %}
+                {% endfor %}
+              {% elif r.paradas.all %}
+                {% for p in r.paradas.all %}
+                  <span style="color: #4a5568;">{{ p.loja.nome }}</span>
+                  {% if not forloop.last %} • {% endif %}
+                {% endfor %}
+              {% else %}
+                <span class="muted" style="color: #ef4444;">(Sem paradas ou transferências vinculadas)</span>
+              {% endif %}
+            </div>
 
-  {# 3. Só exibe o erro se os DOIS estiverem vazios #}
-  {% else %}
-    <span class="muted" style="color: #ef4444;">(Sem paradas ou transferências vinculadas)</span>
-  {% endif %}
-</div>
+            <div class="actions" style="display: flex; gap: 8px; align-items: center;">
+              {% if r.motoboy.username %}
+                <a href="https://wa.me/{{ r.motoboy.perfil.telefone|default:'' }}?text=Olá%20{{ r.motoboy.username }},%20uma%20nova%20rota%20foi%20atribuída%20a%20você:%20Rota%20%23{{ r.id }}.%20Confira%20no%20painel!"
+                   target="_blank"
+                   class="btn"
+                   style="background-color: #25D366; color: white; border: none; padding: 8px 12px; display: flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px; font-size: 13px;">
+                   <span style="font-size: 16px;">💬</span> WhatsApp
+                </a>
+              {% endif %}
 
-<div class="actions" style="display: flex; gap: 8px; align-items: center;">
-    {% if r.motoboy.username %}
-        {# Link direto para o WhatsApp do motorista #}
-        <a href="https://wa.me/{{ r.motoboy.perfil.telefone|default:'' }}?text=Olá%20{{ r.motoboy.username }},%20uma%20nova%20rota%20foi%20atribuída%20a%20você:%20Rota%20%23{{ r.id }}.%20Confira%20no%20painel!" 
-           target="_blank" 
-           class="btn" 
-           style="background-color: #25D366; color: white; border: none; padding: 8px 12px; display: flex; align-items: center; gap: 5px; text-decoration: none; border-radius: 4px; font-size: 13px;">
-           <span style="font-size: 16px;">💬</span> WhatsApp
-        </a>
-    {% endif %}
-    
-    <a class="btn btn-primary" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
-</div>
+              <a class="btn btn-primary" href="{% url 'painel:rota_detalhe' r.id %}">Abrir</a>
+            </div>
+            <div class="small muted">Criada por: {{ r.created_by.username|default:"(sem creator)" }}
+
+          </div>
         </li>
       {% endfor %}
     </ul>
   </div>
+
+  <script>
+    (function() {
+      const modeEl = document.getElementById("mode");
+      const blocks = document.querySelectorAll(".js-mode");
+
+      function applyMode() {
+        blocks.forEach(b => b.style.display = "none");
+        const current = document.querySelectorAll(".js-" + modeEl.value);
+        current.forEach(b => b.style.display = "grid");
+      }
+
+      if (modeEl) {
+        modeEl.addEventListener("change", applyMode);
+        applyMode();
+      }
+
+      window.shiftDay = function(delta) {
+        const dInput = document.querySelector('input[name="day"]');
+        const base = dInput && dInput.value ? new Date(dInput.value + "T00:00:00") : new Date("{{ hoje|date:'Y-m-d' }}" + "T00:00:00");
+        base.setDate(base.getDate() + delta);
+
+        const y = base.getFullYear();
+        const m = String(base.getMonth()+1).padStart(2,'0');
+        const dd = String(base.getDate()).padStart(2,'0');
+        const newVal = `${y}-${m}-${dd}`;
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("mode","day");
+        url.searchParams.set("day", newVal);
+        window.location.href = url.toString();
+      }
+
+      window.quickLast7 = function() {
+        const today = new Date("{{ hoje|date:'Y-m-d' }}" + "T00:00:00");
+        const start = new Date(today);
+        start.setDate(start.getDate() - 6);
+
+        const fmt = (d) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth()+1).padStart(2,'0');
+          const dd = String(d.getDate()).padStart(2,'0');
+          return `${y}-${m}-${dd}`;
+        };
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("mode","range");
+        url.searchParams.set("start", fmt(start));
+        url.searchParams.set("end", fmt(today));
+        window.location.href = url.toString();
+      }
+    })();
+  </script>
 {% endblock %}
