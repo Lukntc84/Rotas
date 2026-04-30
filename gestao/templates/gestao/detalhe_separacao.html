@@ -2,91 +2,445 @@
 
 {% block content %}
   <style>
-    /* Container interno cinza para os dados - Estilo Identidade Logística */
+    /* Identidade Logística (mantida e melhorada) */
     .info-box-logistica {
-      background-color: #f8fafd; /* Tom de azul/cinza muito claro das suas fotos */
+      background-color: #f8fafd;
       border-radius: 15px;
-      padding: 20px;
-      margin-bottom: 15px;
+      padding: 18px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(0,0,0,0.04);
     }
-    
+
     .card-logistica {
       border: none;
       border-radius: 20px;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
       background: white;
       transition: transform 0.2s;
+      overflow: hidden;
     }
-    
+
+    .card-logistica:hover { transform: translateY(-2px); }
+
     .label-logistica {
-      color: #a0aec0;
+      color: #94a3b8;
       font-size: 0.85rem;
-      font-weight: 500;
+      font-weight: 600;
     }
-    
+
     .value-logistica {
-      color: #2d3748;
-      font-weight: 700;
+      color: #0f172a;
+      font-weight: 800;
       text-align: right;
     }
-    
-    /* Ajuste de Grid para Desktop (Cards lado a lado) */
+
+    /* Grid responsivo */
     @media (min-width: 768px) {
       .grid-itens {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 18px;
       }
+    }
+
+    /* Header */
+    .header-wrap {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      flex-wrap:wrap;
+      margin-bottom: 14px;
+    }
+
+    .kpis {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+
+    .kpi {
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 10px 12px;
+      min-width: 150px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+
+    .kpi .kpi-label { font-size: .75rem; letter-spacing:.6px; color:#64748b; font-weight:800; text-transform:uppercase; }
+    .kpi .kpi-value { font-size: 1.4rem; font-weight: 900; color:#0ea5e9; }
+
+    .filters {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+      width: 100%;
+      max-width: 520px;
+    }
+    .filters .row {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+    }
+    @media (max-width: 720px){
+      .filters .row{ grid-template-columns: 1fr; }
+    }
+
+    .filters input, .filters select {
+      width:100%;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      font-weight: 700;
+      background: #f8fafc;
+      outline: none;
+    }
+    .filters input:focus, .filters select:focus{
+      border-color: rgba(59,130,246,.55);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+      background: #fff;
+    }
+
+    /* Seções colapsáveis */
+    details.section {
+      background:#fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 12px 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+      margin-top: 14px;
+    }
+    details.section summary {
+      cursor:pointer;
+      list-style:none;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      align-items:center;
+      font-weight: 900;
+      color:#0f172a;
+    }
+    details.section summary::-webkit-details-marker{ display:none; }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size: .8rem;
+      font-weight: 900;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      color:#334155;
+      white-space: nowrap;
+    }
+
+    /* Badges status */
+    .status-badge{
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: .78rem;
+      border: 1px solid transparent;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      white-space: nowrap;
+    }
+    .st-pendente { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+    .st-em_transito { background:#ecfeff; color:#0e7490; border-color:#a5f3fc; }
+    .st-confirmada { background:#f0fff4; color:#166534; border-color:#bbf7d0; }
+
+    /* Card interno: cabeçalho */
+    .nota-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      margin-bottom: 10px;
+    }
+    .nota-title{
+      font-weight: 950;
+      font-size: 1.05rem;
+      color:#0f172a;
+    }
+    .nota-sub{
+      font-size: .85rem;
+      color:#64748b;
+      font-weight: 700;
+    }
+
+    /* Botão link (sem ação) */
+    .btn-link-lite{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      border: 1px solid #dbeafe;
+      background:#eff6ff;
+      color:#1d4ed8;
+      font-weight: 900;
+      padding: 10px 12px;
+      border-radius: 999px;
+      width: 100%;
+      text-decoration:none;
+      transition: .15s ease;
+    }
+    .btn-link-lite:hover{
+      background:#dbeafe;
+      transform: translateY(-1px);
     }
   </style>
 
   <div class="container mt-4 pb-5">
-    <a href="{% url 'gestao:monitor_paletes' %}" class="btn btn-white border shadow-sm mb-4" style="border-radius: 10px;">← Voltar aos Paletes</a>
+    <a href="{% url 'gestao:monitor_paletes' %}"
+       class="btn btn-white border shadow-sm mb-4"
+       style="border-radius: 10px;">← Voltar aos Paletes</a>
 
-    <div class="mb-4">
-      <h2 class="h4 fw-bold">📦 Itens no Palete: <span class="text-primary">{{ loja.nome }}</span></h2>
-      <span class="badge bg-info text-dark rounded-pill px-3">{{ notas.count }} Nota(s) Encontrada(s)</span>
-    </div>
+    <div class="header-wrap">
+      <div>
+        <h2 class="h4 fw-bold mb-1">📦 Itens no Palete: <span class="text-primary">{{ loja.nome }}</span></h2>
+        <div class="text-muted" style="font-weight:700;">
+          Visualização para controle (CD → lojas). Sem confirmações nesta tela.
+        </div>
 
-    <div class="grid-itens">
-      {% for nota in notas %}
-        <div class="card card-logistica p-3">
-          <div class="text-center mb-3">
-            <h5 class="fw-bold mb-0" style="color: #2d3748;">Transferência #{{ nota.numero_transferencia }}</h5>
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-label">Total</div>
+            <div class="kpi-value" id="kpi-total">{{ notas.count }}</div>
           </div>
-
-          <div class="info-box-logistica mb-3">
-            <div class="d-flex justify-content-between mb-2">
-              <span class="label-logistica">Marca:</span>
-              <span class="value-logistica">{{ nota.marca|default:'-' }}</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="label-logistica">Quantidade:</span>
-              <span class="value-logistica">{{ nota.quantidade }} unidades</span>
-            </div>
-            <div class="d-flex justify-content-between mb-2">
-              <span class="label-logistica">Data/Hora:</span>
-              <span class="value-logistica" style="font-size: 0.85rem;">{{ nota.criado_em|date:'d/m/Y H:i' }}</span>
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <span class="label-logistica">Status:</span>
-              <span class="badge rounded-pill bg-light text-info border-info border px-3">{{ nota.get_status_display }}</span>
-            </div>
+          <div class="kpi">
+            <div class="kpi-label">Pendentes</div>
+            <div class="kpi-value" id="kpi-pendente">0</div>
           </div>
-
-          <div class="px-1">
-            <form method="POST" class="m-0">
-              {% csrf_token %}
-              <input type="hidden" name="transferencia_id" value="{{ nota.id }}" />
-              <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm rounded-pill py-2 text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;"><i class="bi bi-check2-circle me-1"></i> Confirmar Recebimento</button>
-            </form>
+          <div class="kpi">
+            <div class="kpi-label">Em trânsito</div>
+            <div class="kpi-value" id="kpi-transito">0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Confirmadas</div>
+            <div class="kpi-value" id="kpi-confirmada">0</div>
           </div>
         </div>
-      {% empty %}
-        <div class="col-12 text-center py-5">
-          <p class="text-muted">Nenhum item pendente neste palete.</p>
+      </div>
+
+      <div class="filters">
+        <div class="row">
+          <div>
+            <div class="label-logistica" style="margin-bottom:6px;">Buscar</div>
+            <input id="f_search" type="text" placeholder="Nº transf, marca, produto...">
+          </div>
+          <div>
+            <div class="label-logistica" style="margin-bottom:6px;">Status</div>
+            <select id="f_status">
+              <option value="">Todos</option>
+              <option value="pendente">Pendente</option>
+              <option value="em_transito">Em trânsito</option>
+              <option value="confirmada">Confirmada</option>
+            </select>
+          </div>
         </div>
-      {% endfor %}
+
+        <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+          <button class="btn btn-outline-secondary" type="button" style="border-radius:12px; font-weight:900;"
+                  onclick="resetFilters()">Limpar</button>
+          <span class="pill">Atualiza sem ações ✅</span>
+        </div>
+      </div>
     </div>
+
+    <!-- Seções colapsáveis -->
+    <details class="section" open>
+      <summary>
+        <span>📌 Pendentes</span>
+        <span class="pill"><span id="count-pendente">0</span> item(ns)</span>
+      </summary>
+
+      <div class="grid-itens" id="sec-pendente">
+        {% for nota in notas %}
+          {% if nota.status == "pendente" %}
+            <div class="card card-logistica p-3 nota-card"
+                 data-status="{{ nota.status }}"
+                 data-search="{{ nota.numero_transferencia }} {{ nota.marca|default:'' }} {{ nota.nome_produto|default:'' }}">
+              <div class="nota-head">
+                <div>
+                  <div class="nota-title">Transferência #{{ nota.numero_transferencia }}</div>
+                  <div class="nota-sub">Criado em: {{ nota.criado_em|date:'d/m/Y H:i' }}</div>
+                </div>
+                <span class="status-badge st-pendente">● {{ nota.get_status_display }}</span>
+              </div>
+
+              <div class="info-box-logistica">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Marca:</span>
+                  <span class="value-logistica">{{ nota.marca|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Produto:</span>
+                  <span class="value-logistica">{{ nota.nome_produto|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Quantidade:</span>
+                  <span class="value-logistica">{{ nota.quantidade }} unidades</span>
+                </div>
+              </div>
+
+              <a class="btn-link-lite" href="{% url 'painel:transferencia_detalhe' nota.id %}">
+                🔎 Ver protocolo
+              </a>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="section">
+      <summary>
+        <span>🚚 Em trânsito</span>
+        <span class="pill"><span id="count-transito">0</span> item(ns)</span>
+      </summary>
+
+      <div class="grid-itens" id="sec-transito">
+        {% for nota in notas %}
+          {% if nota.status == "em_transito" %}
+            <div class="card card-logistica p-3 nota-card"
+                 data-status="{{ nota.status }}"
+                 data-search="{{ nota.numero_transferencia }} {{ nota.marca|default:'' }} {{ nota.nome_produto|default:'' }}">
+              <div class="nota-head">
+                <div>
+                  <div class="nota-title">Transferência #{{ nota.numero_transferencia }}</div>
+                  <div class="nota-sub">Criado em: {{ nota.criado_em|date:'d/m/Y H:i' }}</div>
+                </div>
+                <span class="status-badge st-em_transito">🚚 {{ nota.get_status_display }}</span>
+              </div>
+
+              <div class="info-box-logistica">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Marca:</span>
+                  <span class="value-logistica">{{ nota.marca|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Produto:</span>
+                  <span class="value-logistica">{{ nota.nome_produto|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Quantidade:</span>
+                  <span class="value-logistica">{{ nota.quantidade }} unidades</span>
+                </div>
+              </div>
+
+              <a class="btn-link-lite" href="{% url 'painel:transferencia_detalhe' nota.id %}">
+                🔎 Ver protocolo
+              </a>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="section">
+      <summary>
+        <span>✅ Confirmadas</span>
+        <span class="pill"><span id="count-confirmada">0</span> item(ns)</span>
+      </summary>
+
+      <div class="grid-itens" id="sec-confirmada">
+        {% for nota in notas %}
+          {% if nota.status == "confirmada" %}
+            <div class="card card-logistica p-3 nota-card"
+                 data-status="{{ nota.status }}"
+                 data-search="{{ nota.numero_transferencia }} {{ nota.marca|default:'' }} {{ nota.nome_produto|default:'' }}">
+              <div class="nota-head">
+                <div>
+                  <div class="nota-title">Transferência #{{ nota.numero_transferencia }}</div>
+                  <div class="nota-sub">Criado em: {{ nota.criado_em|date:'d/m/Y H:i' }}</div>
+                </div>
+                <span class="status-badge st-confirmada">✅ {{ nota.get_status_display }}</span>
+              </div>
+
+              <div class="info-box-logistica">
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Marca:</span>
+                  <span class="value-logistica">{{ nota.marca|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Produto:</span>
+                  <span class="value-logistica">{{ nota.nome_produto|default:'-' }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                  <span class="label-logistica">Quantidade:</span>
+                  <span class="value-logistica">{{ nota.quantidade }} unidades</span>
+                </div>
+              </div>
+
+              <a class="btn-link-lite" href="{% url 'painel:transferencia_detalhe' nota.id %}">
+                🔎 Ver protocolo
+              </a>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+
+    {% if notas.count == 0 %}
+      <div class="text-center py-5">
+        <p class="text-muted">Nenhum item pendente neste palete.</p>
+      </div>
+    {% endif %}
   </div>
+
+  <script>
+    function qs(sel){ return document.querySelector(sel); }
+    function qsa(sel){ return [...document.querySelectorAll(sel)]; }
+
+    function recomputeCounts(){
+      const cards = qsa('.nota-card');
+
+      const counts = { pendente:0, em_transito:0, confirmada:0 };
+      cards.forEach(c => {
+        const st = c.dataset.status || '';
+        if (counts[st] !== undefined) counts[st] += 1;
+      });
+
+      qs('#kpi-pendente').textContent   = counts.pendente;
+      qs('#kpi-transito').textContent   = counts.em_transito;
+      qs('#kpi-confirmada').textContent = counts.confirmada;
+
+      qs('#count-pendente').textContent   = counts.pendente;
+      qs('#count-transito').textContent   = counts.em_transito;
+      qs('#count-confirmada').textContent = counts.confirmada;
+    }
+
+    function applyFilters(){
+      const term = (qs('#f_search').value || '').toLowerCase().trim();
+      const st = qs('#f_status').value || '';
+
+      qsa('.nota-card').forEach(card => {
+        const okStatus = !st || card.dataset.status === st;
+        const hay = (card.dataset.search || '').toLowerCase();
+        const okTerm = !term || hay.includes(term);
+
+        card.style.display = (okStatus && okTerm) ? '' : 'none';
+      });
+    }
+
+    function resetFilters(){
+      qs('#f_search').value = '';
+      qs('#f_status').value = '';
+      applyFilters();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      recomputeCounts();
+      applyFilters();
+
+      qs('#f_search').addEventListener('input', applyFilters);
+      qs('#f_status').addEventListener('change', applyFilters);
+    });
+  </script>
 {% endblock %}

@@ -98,6 +98,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'chat.context_processors.contador_mensagens',
+                "painel.context_processors.nav_permissions"
             ],
         },
     },

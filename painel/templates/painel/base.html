@@ -128,10 +128,9 @@
       <nav class="drawer-nav">
         <a class="drawer-link" href="{% url 'painel:home' %}"><i class="fas fa-home"></i> Painel</a>
         
-        {% if user.is_staff or user.is_superuser or "Loja" in user.groups.all.0.name %}
-            <a class="drawer-link" href="{% url 'gestao:monitor_paletes' %}"><i class="bi bi-box-seam"></i> Monitor de Paletes</a>
+        {% if can_view_paletes %}
+          <!-- link Monitor de Paletes -->
         {% endif %}
-
         <a class="drawer-link" href="{% url 'painel:rotas_hoje' %}"><i class="fas fa-route"></i> Rotas</a>
         
         {% if perms.rotas.add_rota %}

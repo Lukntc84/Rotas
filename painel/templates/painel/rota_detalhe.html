@@ -18,6 +18,70 @@
 {% endblock %}
 
 {% block content %}
+
+  {# ✅ NOVO: CSS só para checkboxes (não mexe no resto) #}
+  <style>
+    /* ==========================
+       CHECKBOX UI (padronizado)
+       ========================== */
+    input[type="checkbox"].cb-ui{
+      appearance: none;
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 2px solid #cbd5e1;
+      background: #fff;
+      display: inline-grid;
+      place-content: center;
+      cursor: pointer;
+      transition: all .15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+      flex: 0 0 auto;
+    }
+
+    input[type="checkbox"].cb-ui:hover{
+      border-color: #0ea5e9;
+    }
+
+    input[type="checkbox"].cb-ui:focus{
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(14,165,233,.18);
+      border-color: #0ea5e9;
+    }
+
+    input[type="checkbox"].cb-ui:checked{
+      background: #16a34a;
+      border-color: #16a34a;
+    }
+
+    input[type="checkbox"].cb-ui:checked::before{
+      content: "";
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg);
+      margin-top: -1px;
+    }
+
+    input[type="checkbox"].cb-ui:disabled{
+      cursor: not-allowed;
+      opacity: .55;
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      box-shadow: none;
+    }
+
+    /* deixa o clique no label confortável */
+    .cb-label{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+    }
+  </style>
+
   <div class="card">
     <div class="card-title">
       <h2>Paradas da Rota</h2>
@@ -56,8 +120,9 @@
 
                     {# ✅ NOVO: AÇÕES EM LOTE (COLETA) #}
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin: 8px 0 12px 0;">
-                      <label style="display:flex; align-items:center; gap:8px; font-weight:700; color:#334155;">
-                        <input type="checkbox" class="chk-all-coleta" data-loja="{{ p.loja.id }}">
+                      <label class="cb-label" style="font-weight:700; color:#334155;">
+                        {# ✅ ALTERADO: adicionada classe cb-ui #}
+                        <input type="checkbox" class="chk-all-coleta cb-ui" data-loja="{{ p.loja.id }}">
                         Selecionar todos
                       </label>
 
@@ -81,9 +146,10 @@
 
                               {# ✅ NOVO: checkbox para lote (só aparece se pendente) #}
                               {% if t.status == "pendente" %}
-                                <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:700; color:#334155;">
+                                <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
+                                  {# ✅ ALTERADO: adicionada classe cb-ui #}
                                   <input type="checkbox"
-                                         class="chk-coleta"
+                                         class="chk-coleta cb-ui"
                                          data-loja="{{ p.loja.id }}"
                                          value="{{ t.id }}">
                                   Selecionar
@@ -123,8 +189,9 @@
 
                     {# ✅ NOVO: AÇÕES EM LOTE (ENTREGA) #}
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin: 8px 0 12px 0;">
-                      <label style="display:flex; align-items:center; gap:8px; font-weight:700; color:#334155;">
-                        <input type="checkbox" class="chk-all-entrega" data-loja="{{ p.loja.id }}">
+                      <label class="cb-label" style="font-weight:700; color:#334155;">
+                        {# ✅ ALTERADO: adicionada classe cb-ui #}
+                        <input type="checkbox" class="chk-all-entrega cb-ui" data-loja="{{ p.loja.id }}">
                         Selecionar todos
                       </label>
 
@@ -148,11 +215,12 @@
 
                               {# ✅ NOVO: checkbox para lote (só aparece se em_transito) #}
                               {% if t.status == "em_transito" %}
-                                <label style="display:flex; align-items:center; gap:8px; margin-top:8px; font-weight:700; color:#334155;">
+                                <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
+                                  {# ✅ ALTERADO: adicionada classe cb-ui #}
                                   <input type="checkbox"
-                                         class="chk-entrega"
-                                         data-loja="{{ p.loja.id }}"
-                                         value="{{ t.id }}">
+                                        class="chk-entrega cb-ui"
+                                        data-loja="{{ p.loja.id }}"
+                                        value="{{ t.id }}">
                                   Selecionar
                                 </label>
                               {% endif %}
@@ -174,17 +242,11 @@
                                     📍 Confirmar entrega
                                   </button>
                                 </form>
-                              {% elif t.status == "aguardando_cd" %}
-                                <div class="small muted" style="margin-top:6px;">
-                                  ⏳ Entregue. Aguardando CD
-                                </div>
                               {% endif %}
                             </div>
                           </div>
                         </div>
                       {% endfor %}
-                    {% else %}
-                      <div class="small muted">Nenhum pedido para entregar aqui.</div>
                     {% endif %}
                   </div>
                 </div>
@@ -193,7 +255,6 @@
             {# ✅ FIM do bloco novo #}
 
           </div>
-
 
          {% comment "" %}
           <div class="actions">
@@ -357,6 +418,12 @@
             btn.disabled = false;
           }
         });
+      });
+
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+          window.location.reload();
+        }
       });
     });
   </script>

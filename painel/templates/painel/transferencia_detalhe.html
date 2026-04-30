@@ -59,7 +59,6 @@
     <h2 style="margin:0;">Detalhes do Pedido</h2>
   <span class="badge-status 
     {% if t.status == 'confirmada' %}badge-success
-    {% elif t.status == 'aguardando_cd' %}badge-warning
     {% elif t.status == 'em_transito' %}badge-info
     {% else %}badge-warning{% endif %}">
     {{ t.status|upper }}

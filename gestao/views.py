@@ -385,51 +385,114 @@ def transferencia_create(request):
     
     return render(request, "painel/transferencia_form.html", {"form": form})
 
-@login_required
-def monitor_paletes_cd(request):
-    # Nova trava baseada em Grupos, já que o vínculo de Loja está oculto no banco
-    is_operador = request.user.groups.filter(name='Loja').exists()
-    
-    if not (request.user.is_staff or is_operador):
-        return redirect('painel:home')
 
-    paletes = (
-        Transferencia.objects.filter(
-            status='pendente',
-            loja_origem__nome__icontains="CD"
+def _get_loja_usuario(user):
+    # Ajuste aqui se no seu projeto o vínculo for outro.
+    return getattr(user, "loja_perfil", None)
+
+
+def _is_motoboy(user):
+    return user.groups.filter(name="Motoboy").exists()
+
+
+@login_required
+def monitor_paletes(request):
+    user = request.user
+    loja_user = _get_loja_usuario(user)
+
+    is_admin = user.is_staff or user.is_superuser
+    is_motoboy = _is_motoboy(user)
+
+    is_cd = False
+    if loja_user and getattr(loja_user, "nome", None):
+        is_cd = "CD" in loja_user.nome.upper()
+
+    # ✅ Permissão
+    if not (is_admin or is_motoboy or loja_user):
+        raise PermissionDenied("Acesso negado ao monitor de paletes.")
+
+    # ✅ Lista base de lojas que devem aparecer como card
+    lojas_qs = Loja.objects.filter(ativa=True).order_by("nome")
+
+    # (opcional) se você NÃO quer mostrar "CD" como card:
+    lojas_qs = lojas_qs.exclude(nome__icontains="CD")
+
+    # ✅ Usuário de loja comum vê só o palete da própria loja
+    if loja_user and not (is_cd or is_admin or is_motoboy):
+        lojas_qs = lojas_qs.filter(id=loja_user.id)
+
+    lojas = list(lojas_qs)
+
+    # ✅ Contagem de pendentes por loja (CD -> loja), mas SEM perder lojas com 0
+    counts = (
+        Transferencia.objects
+        .filter(
+            loja_origem__nome__icontains="CD",
+            status="pendente",
+            loja_destino__in=lojas
         )
-        .values('loja_destino__nome')
-        .annotate(
-            total_notas=Count('id'),
-            nome_loja=F('loja_destino__nome')
-        )
-        .order_by('loja_destino__nome')
+        .values("loja_destino_id")
+        .annotate(c=Count("id"))
     )
-    return render(request, 'gestao/monitor_paletes.html', {'paletes': paletes})
+
+    mapa = {row["loja_destino_id"]: row["c"] for row in counts}
+
+    paletes = [
+        {"nome_loja": loja.nome, "total_notas": int(mapa.get(loja.id, 0))}
+        for loja in lojas
+    ]
+
+    # ✅ Ordenação (mantém seu dropdown "Ordenar: mais pendentes")
+    ordenar = request.GET.get("ordenar", "mais_pendentes")
+    if ordenar == "nome":
+        paletes.sort(key=lambda x: x["nome_loja"].lower())
+    else:
+        # mais pendentes primeiro
+        paletes.sort(key=lambda x: (-x["total_notas"], x["nome_loja"].lower()))
+
+    return render(request, "gestao/monitor_paletes.html", {"paletes": paletes})
 
 @login_required
-def detalhe_separacao_cd(request, loja_nome):
-    # 1. Busca a loja de destino
-    loja = get_object_or_404(Loja, nome=loja_nome)
-    
-    # 2. O FILTRO DEVE SER IGUAL AO DO MONITOR:
-    # Destino é a loja clicada E origem contém "CD"
-    notas = Transferencia.objects.filter(
-        loja_destino=loja,
-        loja_origem__nome__icontains="CD", # Filtro sincronizado com o monitor
-        status='pendente'
-    ).order_by('-id')
-    
-    # Lógica do botão confirmar
-    if request.method == "POST":
-        transferencia_id = request.POST.get("transferencia_id")
-        item = get_object_or_404(Transferencia, id=transferencia_id)
-        item.status = 'em_transito'
-        item.save()
-        messages.success(request, f"Transferência {item.numero_transferencia} confirmada!")
-        return redirect('gestao:detalhe_separacao', loja_nome=loja.nome)
+def detalhe_separacao(request, nome_loja):
+    user = request.user
+    loja_user = _get_loja_usuario(user)
 
-    return render(request, 'gestao/detalhe_separacao.html', {
-        'loja': loja,
-        'notas': notas
+    is_admin = user.is_staff or user.is_superuser
+    is_motoboy = _is_motoboy(user)
+
+    is_cd = False
+    if loja_user and getattr(loja_user, "nome", None):
+        is_cd = "CD" in loja_user.nome.upper()
+
+    # precisa ser admin/motoboy ou ter loja vinculada
+    if not (is_admin or is_motoboy or loja_user):
+        raise PermissionDenied("Acesso negado ao detalhe do palete.")
+
+    # Loja do detalhe
+    loja = get_object_or_404(Loja, nome=nome_loja)
+
+    # 🔒 Loja comum só acessa o próprio palete
+    if not (is_cd or is_admin or is_motoboy):
+        if not loja_user or loja_user.id != loja.id:
+            raise PermissionDenied("Você só pode visualizar o palete da sua loja.")
+
+    # notas do palete (CD -> loja)
+    notas = (
+        Transferencia.objects
+        .select_related("loja_origem", "loja_destino")
+        .filter(loja_origem__nome__icontains="CD", loja_destino=loja)
+        .filter(status__in=["pendente", "em_transito", "confirmada"])
+        .order_by("-criado_em")
+    )
+
+    return render(request, "gestao/detalhe_separacao.html", {
+        "loja": loja,
+        "notas": notas,
     })
+    
+# ✅ ALIASES para bater com o gestao/urls.py atual
+def monitor_paletes_cd(request):
+    return monitor_paletes(request)
+
+def detalhe_separacao_cd(request, loja_nome):
+    return detalhe_separacao(request, loja_nome)

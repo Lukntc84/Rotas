@@ -648,10 +648,10 @@
             </summary>
             <div class="section-body">
               <div class="section-sub">Entregues pelo motoboy. Podem estar aguardando CD ou finalizadas.</div>
-
+                
               <div class="dashboard-logistica" id="grid-entregues">
                 {% with tem_entregues=0 %}
-                {% for t in transferencias_em_rota %}
+                {% for t in transferencias_entregues %}
                   {% if t.status == "aguardando_cd" or t.status == "confirmada" %}
                     {% if forloop.first %}{% endif %}
                     <div class="card-transferencia" id="card-entregue-{{ t.id }}" style="opacity: 0.97;">

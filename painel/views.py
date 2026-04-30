@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.http import HttpResponseForbidden
 from django.contrib import messages
-
+from django.views.decorators.cache import never_cache
 from rotas.models import Loja, Rota, Parada,Transferencia
 from .forms import AdicionarLojaRotaForm, CriarRotaForm, TransferenciaForm
 from django.core.exceptions import PermissionDenied
@@ -201,6 +201,7 @@ def rotas_hoje(request):
 
 
 @login_required
+@never_cache
 @permission_required("rotas.view_rota", raise_exception=True)
 def rota_detalhe(request, rota_id):
     rota = get_object_or_404(
@@ -454,12 +455,10 @@ def transferencias_lista(request):
     is_motoboy = _is_motoboy(request.user)
     is_operador = _is_operador(request.user)
 
-    # ✅ NOVO: base é "não entregue"
-    # Antes era: rota__isnull=True
+    # ✅ Base geral (não exclui nada aqui — vamos separar depois corretamente)
     qs = (
         Transferencia.objects
         .select_related("loja_origem", "loja_destino", "rota", "rota__motoboy")
-        .exclude(status="entregue")   # <<< TROQUE se o valor do seu status for outro
         .order_by('-criado_em')
     )
 
@@ -503,11 +502,19 @@ def transferencias_lista(request):
         elif fim:
             qs = qs.filter(criado_em__date__lte=fim)
 
-    # ✅ Divide em 2 abas/seções:
-    transferencias_disponiveis = qs.filter(rota__isnull=True)
-    transferencias_em_rota = qs.filter(rota__isnull=False)
+    # ✅ ENTREGUES (independente de ter rota ou não)
+    transferencias_entregues = qs.filter(status="confirmada")
 
-    # micro ajuste do aviso da rota do dia (se quiser manter)
+    # ✅ DISPONÍVEIS: só pendentes e sem rota (selecionáveis)
+    transferencias_disponiveis = qs.filter(
+        rota__isnull=True,
+        status="pendente"
+    )
+
+    # ✅ EM ROTA: tem rota e ainda não finalizou
+    transferencias_em_rota = qs.filter(rota__isnull=False).exclude(status="confirmada")
+
+    # micro ajuste do aviso da rota do dia (mantido)
     rota_ativa = None
     if is_motoboy:
         rota_ativa = (
@@ -520,12 +527,12 @@ def transferencias_lista(request):
     return render(request, "painel/transferencias_lista.html", {
         "transferencias_disponiveis": transferencias_disponiveis,
         "transferencias_em_rota": transferencias_em_rota,
+       "transferencias_entregues": transferencias_entregues,
         "lojas": Loja.objects.filter(ativa=True).order_by('nome'),
         "rota_ativa": rota_ativa,
-        "is_motoboy": is_motoboy,   # ✅ ADICIONE ISSO
+        "is_motoboy": is_motoboy,
     })
-
-
+    
 @login_required
 @permission_required("rotas.add_transferencia", raise_exception=True)
 def transferencia_nova(request):
@@ -809,13 +816,13 @@ def confirmar_recebimento(request, pk):
         messages.error(request, "Ação negada: A carga precisa ser coletada antes de ser entregue.")
         return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
 
-    # ✅ Aqui NÃO finaliza. Só marca que foi entregue pelo motoboy e aguarda CD.
-    transferencia.status = "aguardando_cd"
+    # ✅ FINALIZA aqui (sem status aguardando_cd)
+    transferencia.status = "confirmada"
     transferencia.confirmado_em = timezone.now()
     transferencia.confirmado_por = request.user
     transferencia.save(update_fields=["status", "confirmado_em", "confirmado_por"])
 
-    messages.success(request, "Entrega registrada. Aguardando confirmação de entrada no CD.")
+    messages.success(request, "Entrega confirmada. Protocolo finalizado!")
     return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
 
 @login_required
@@ -874,7 +881,7 @@ def bulk_confirmar_coleta(request, rota_id):
 def bulk_confirmar_entrega(request, rota_id):
     """
     Confirma entrega em lote:
-    em_transito -> aguardando_cd
+    em_transito -> confirmada
     """
     rota = get_object_or_404(Rota, id=rota_id)
 
@@ -898,7 +905,7 @@ def bulk_confirmar_entrega(request, rota_id):
         total = qs.count()
 
         qs.update(
-            status="aguardando_cd",
+            status="confirmada",
             confirmado_em=now,
             confirmado_por=request.user
         )

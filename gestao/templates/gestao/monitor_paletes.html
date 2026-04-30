@@ -2,7 +2,6 @@
 
 {% block content %}
 <style>
-    /* Estilização da Grade de Cards */
     .dashboard-paletes {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -10,7 +9,6 @@
         margin-top: 20px;
     }
 
-    /* O Card da Loja */
     .card-loja-logistica {
         background-color: #ffffff !important;
         border-radius: 16px !important;
@@ -31,7 +29,6 @@
         text-align: center;
     }
 
-    /* Título da Loja */
     .loja-titulo {
         font-size: 1.4rem;
         font-weight: 700;
@@ -43,7 +40,6 @@
         gap: 10px;
     }
 
-    /* Bloco de Informação com Divisória Interna */
     .info-container {
         background-color: #f8f9fa;
         border-radius: 12px;
@@ -69,7 +65,6 @@
         color: #007bff;
     }
 
-    /* Botão Estilizado */
     .btn-logistica {
         background-color: #007bff !important;
         border: none !important;
@@ -90,45 +85,77 @@
         border-radius: 50px;
         font-weight: 600;
     }
+
+    .tools {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      flex-wrap:wrap;
+      margin-top: 14px;
+    }
+    .tools input, .tools select{
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      font-weight: 800;
+      background: #f8fafc;
+      outline: none;
+    }
+    .tools input:focus, .tools select:focus{
+      border-color: rgba(59,130,246,.55);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+      background: #fff;
+    }
 </style>
 
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
         <div>
             <h2 class="fw-bold"><i class="bi bi-box-seam me-2"></i>Monitor de Separação (CD)</h2>
-            <p class="text-muted mb-0">Gerencie os paletes físicos organizados por loja no galpão.</p>
+            <p class="text-muted mb-0">Controle visual das transferências CD → lojas agrupadas por palete.</p>
         </div>
         <div>
-            <span class="badge bg-primary badge-modo shadow-sm">MODO LOGÍSTICA</span>
+            <span class="badge bg-primary badge-modo shadow-sm">MODO VISUALIZAÇÃO</span>
         </div>
     </div>
-    
+
+    <div class="tools">
+      <input id="f_loja" type="text" placeholder="Buscar loja...">
+      <select id="f_order">
+        <option value="desc">Ordenar: mais pendentes</option>
+        <option value="asc">Ordenar: menos pendentes</option>
+        <option value="az">Ordenar: A → Z</option>
+        <option value="za">Ordenar: Z → A</option>
+      </select>
+    </div>
+
     <hr class="mb-4">
 
-    <div class="dashboard-paletes">
+    <div class="dashboard-paletes" id="grid-paletes">
         {% for p in paletes %}
-        <div class="card-loja-logistica">
+        <div class="card-loja-logistica palete-card"
+             data-loja="{{ p.nome_loja|default:'Sem Destino' }}"
+             data-total="{{ p.total_notas|default:0 }}">
             <div class="card-loja-body">
-                
                 <div class="loja-titulo">
                     <span>🏪</span> {{ p.nome_loja|default:"Sem Destino" }}
                 </div>
-                
+
                 <div class="info-container">
                     <span class="info-label">Transferências Pendentes</span>
                     <span class="info-valor">{{ p.total_notas }}</span>
                 </div>
-                
+
                 {% if p.nome_loja %}
                     <a href="{% url 'gestao:detalhe_separacao' p.nome_loja %}" class="btn btn-primary btn-logistica w-100 shadow-sm">
-                       Ver Notas Fiscais
+                       Ver Itens do Palete
                     </a>
                 {% else %}
                     <button disabled class="btn btn-secondary w-100 py-2 border-radius-10">
                         Loja não identificada
                     </button>
                 {% endif %}
-                
             </div>
         </div>
         {% empty %}
@@ -140,4 +167,47 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  function applyPaleteFilters(){
+    const term = ($('#f_loja').value || '').toLowerCase().trim();
+    const order = $('#f_order').value;
+
+    const cards = $$('.palete-card');
+
+    // filtro
+    cards.forEach(c => {
+      const nome = (c.dataset.loja || '').toLowerCase();
+      c.style.display = (!term || nome.includes(term)) ? '' : 'none';
+    });
+
+    // ordenação (reordena no DOM)
+    const grid = $('#grid-paletes');
+    const visible = cards.filter(c => c.style.display !== 'none');
+
+    visible.sort((a,b) => {
+      const ta = parseInt(a.dataset.total || '0', 10);
+      const tb = parseInt(b.dataset.total || '0', 10);
+      const la = (a.dataset.loja || '').toLowerCase();
+      const lb = (b.dataset.loja || '').toLowerCase();
+
+      if (order === 'desc') return tb - ta;
+      if (order === 'asc') return ta - tb;
+      if (order === 'az') return la.localeCompare(lb);
+      if (order === 'za') return lb.localeCompare(la);
+      return 0;
+    });
+
+    visible.forEach(c => grid.appendChild(c));
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    $('#f_loja').addEventListener('input', applyPaleteFilters);
+    $('#f_order').addEventListener('change', applyPaleteFilters);
+    applyPaleteFilters();
+  });
+</script>
 {% endblock content %}
