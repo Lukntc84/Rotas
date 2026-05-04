@@ -54,12 +54,14 @@
             <a class="topbar-link" href="{% url 'painel:transferencia_nova' %}">Nova Transferência</a>
           {% endif %}
 
-          <a class="topbar-link" href="{% url 'chat:lista' %}" style="position: relative;">
-            <span style="font-size: 1.1rem;">💬</span> Chat
-            {% if mensagens_nao_lidas %}
-              <span style="position: absolute; top: 0px; right: -5px; background-color: #e53e3e; color: white; border-radius: 50%; width: 8px; height: 8px; border: 1px solid white;"></span>
-            {% endif %}
-          </a>
+          {% if request.user.is_staff or request.user.is_superuser %}
+            <a class="topbar-link" href="{% url 'chat:lista' %}" style="position: relative;">
+              <span style="font-size: 1.1rem;">💬</span> Chat
+              {% if mensagens_nao_lidas %}
+                <span style="position: absolute; top: 0px; right: -5px; background-color: #e53e3e; color: white; border-radius: 50%; width: 8px; height: 8px; border: 1px solid white;"></span>
+              {% endif %}
+            </a>
+          {% endif %}
               
           <div class="nav-item" style="position: relative; margin-right: 20px; display: flex; align-items: center;">
             <a href="{% url 'painel:notificacoes_lista' %}" style="text-decoration: none; font-size: 1.5rem; position: relative;">
@@ -149,12 +151,14 @@
           <a class="drawer-link" href="{% url 'painel:transferencia_nova' %}"><i class="fas fa-file-export"></i> Nova Transferência</a>
         {% endif %}
 
-        <a class="drawer-link" href="{% url 'chat:lista' %}">
-            <i class="fas fa-comments"></i> Chat 
-            {% if mensagens_nao_lidas %}
-                <span class="badge" style="background: #e53e3e; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">!</span>
-            {% endif %}
-        </a>
+        {% if request.user.is_staff or request.user.is_superuser %}
+          <a class="drawer-link" href="{% url 'chat:lista' %}">
+              <i class="fas fa-comments"></i> Chat 
+              {% if mensagens_nao_lidas %}
+                  <span class="badge" style="background: #e53e3e; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">!</span>
+              {% endif %}
+          </a>
+        {% endif %}
 
         <a class="drawer-link" href="{% url 'painel:notificacoes_lista' %}"><i class="fas fa-bell"></i> Notificações</a>
       </nav>
