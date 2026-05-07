@@ -168,8 +168,11 @@
                               {% if t.status == "pendente" %}
                                 <form method="post" action="{% url 'painel:confirmar_coleta' t.id %}" style="margin-top:6px;">
                                   {% csrf_token %}
-                                  <button type="submit" class="btn btn-sm btn-success"
-                                          onclick="return confirm('Confirmar coleta do Protocolo #{{ t.id }}?');">
+                                  <button type="button"
+                                          class="btn btn-sm btn-success btn-coleta-ajax"
+                                          data-url="{% url 'painel:confirmar_coleta' t.id %}"
+                                          data-id="{{ t.id }}"
+                                          style="margin-top:6px;">
                                     ✅ Confirmar coleta
                                   </button>
                                 </form>
@@ -426,5 +429,53 @@
         }
       });
     });
+     function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + '=') {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".btn-coleta-ajax").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const url = btn.dataset.url;
+        const id = btn.dataset.id;
+
+        if (!confirm(`Confirmar coleta do Protocolo #${id}?`)) return;
+
+        btn.disabled = true;
+        try {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+          });
+
+          if (!res.ok) {
+            alert("Não foi possível confirmar a coleta.");
+            btn.disabled = false;
+            return;
+          }
+
+          // ✅ Fica na mesma tela e atualiza o status
+          location.reload();
+        } catch (e) {
+          console.error(e);
+          alert("Erro ao confirmar a coleta.");
+          btn.disabled = false;
+        }
+      });
+    });
+  });
   </script>
 {% endblock %}

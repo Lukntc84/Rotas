@@ -67,9 +67,10 @@ class TransferenciaForm(forms.ModelForm):
             "loja_destino",
             "fornecedor",
             "responsavel",
-            "motorista",
-            "retirado_por",
-            "data",
+            # ✅ removidos:
+            # "motorista",
+            # "retirado_por",
+
             "numero_transferencia",
             "porte_carga",
             "numero_documento",
@@ -97,8 +98,9 @@ class TransferenciaForm(forms.ModelForm):
             "quantidade": "Quantidade",
             "fornecedor": "Fornecedor",
             "responsavel": "Responsável",
-            "motorista": "Motorista",
-            "retirado_por": "Retirado por",
+            # ✅ removidos:
+            # "motorista": "Motorista",
+            # "retirado_por": "Retirado por",
             "numero_documento": "Nº do Documento (NF/Recibo)",
             "observacoes": "Observações",
             "porte_carga": "Porte da Carga",
@@ -108,15 +110,8 @@ class TransferenciaForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # ✅ 1) Motorista: mostrar somente usuários do grupo Motoboy
-        # (não lista operadores, lojas, etc.)
-        if 'motorista' in self.fields:
-            self.fields['motorista'].queryset = (
-                self.fields['motorista'].queryset
-                .filter(groups__name="Motoboy", is_active=True)
-                .order_by("username")
-                .distinct()
-            )
+        # ✅ IMPORTANTE: guarda o user para usar no save()
+        self.user = user
 
         if user and not user.is_staff:
             # Filtra a loja de origem baseada no perfil do usuário logado
@@ -126,7 +121,7 @@ class TransferenciaForm(forms.ModelForm):
                 self.fields['loja_origem'].initial = user_loja
                 self.fields['loja_origem'].empty_label = None
 
-                # ✅ 2) Para usuário de loja: "Tipo" sempre Saída e travado
+                # ✅ Para usuário de loja: "Tipo" sempre Saída e travado
                 if 'tipo' in self.fields:
                     self.fields['tipo'].initial = 'saida'
                     self.fields['tipo'].disabled = True
@@ -135,15 +130,19 @@ class TransferenciaForm(forms.ModelForm):
         """
         Sobrescrevemos o save para garantir que o campo 'tamanho_carga'
         receba o mesmo valor que o usuário selecionou em 'porte_carga'.
+        E para NÃO vincular motorista/retirado_por na criação.
         """
         instance = super().save(commit=False)
 
-        # ✅ se o campo estiver desabilitado, o cleaned_data pode não trazer 'tipo'
-        # então garantimos coerência quando for loja
-        if hasattr(getattr(self, "user", None), "loja_perfil") and not getattr(self.user, "is_staff", False):
+        # ✅ Se tipo estiver travado e não vier no POST, garante coerência para loja
+        if self.user and getattr(self.user, "loja_perfil", None) and not getattr(self.user, "is_staff", False):
             instance.tipo = "saida"
 
-        # Sincroniza os campos para evitar erro nos filtros da lista
+        # ✅ NÃO vincula motorista nem retirado_por na criação
+        instance.motorista = None
+        instance.retirado_por = None
+
+        # ✅ Sincroniza os campos para evitar erro nos filtros da lista
         porte_selecionado = self.cleaned_data.get('porte_carga')
         if porte_selecionado:
             instance.tamanho_carga = porte_selecionado

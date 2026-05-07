@@ -118,7 +118,7 @@ class Protocolo(models.Model):
 class MovimentoEstoque(models.Model):
     TIPO_CHOICES = [("entrada", "Entrada"), ("saida", "Saída")]
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
-    data = models.DateField(default=timezone.now)
+
     protocolo = models.CharField(max_length=50, blank=True)
 
 class Transferencia(models.Model):

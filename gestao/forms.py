@@ -121,7 +121,6 @@ class TransferenciaForm(forms.ModelForm):
             "responsavel",
             "motorista",
             "retirado_por",
-            "data",
             "numero_documento",
             "observacoes",
         ]
@@ -137,7 +136,6 @@ class TransferenciaForm(forms.ModelForm):
             "responsavel": forms.TextInput(attrs={"class": "form-control"}),
             "motorista": forms.Select(attrs={"class": "form-control"}),
             "retirado_por": forms.TextInput(attrs={"class": "form-control"}),
-            "data": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
             "numero_documento": forms.TextInput(attrs={"class": "form-control"}),
             "observacoes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
         }
@@ -197,4 +195,4 @@ class ProtocoloConfirmarForm(forms.Form):
 class MovimentoEstoqueForm(forms.ModelForm):
     class Meta:
         model = MovimentoEstoque
-        fields = ['data', 'protocolo']
+        fields = ['protocolo']
