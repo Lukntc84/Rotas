@@ -699,7 +699,10 @@ def criar_rota_motorista(request):
 
         # 4) Vincula todas as transferências à rota escolhida (bulk update)
         ids_para_vincular = [t.id for t in transferencias]
-        Transferencia.objects.filter(id__in=ids_para_vincular).update(rota=rota)
+        Transferencia.objects.filter(id__in=ids_para_vincular).update(
+            rota=rota,
+            motorista=request.user
+        )
 
         # 5) Garante paradas únicas e cria apenas as que faltarem
         lojas_unicas_em_ordem = {}
@@ -742,7 +745,7 @@ def criar_rota_motorista(request):
 
 @login_required
 def dashboard(request):
-    # Se for Admin (Staff), ele vê tudo.
+
     if request.user.is_staff:
         transferencias = Transferencia.objects.all()
         rotas_ativas = Rota.objects.filter(status="em_rota")
@@ -821,6 +824,10 @@ def confirmar_recebimento(request, pk):
     transferencia.confirmado_em = timezone.now()
     transferencia.confirmado_por = request.user
     transferencia.save(update_fields=["status", "confirmado_em", "confirmado_por"])
+    is_motorista = request.user.groups.filter(name="Motoboy").exists()
+
+    if not (is_motorista or request.user.is_staff):
+        return HttpResponseForbidden("Sem permissão.")
 
     messages.success(request, "Entrega confirmada. Protocolo finalizado!")
     return redirect('painel:transferencia_detalhe', transferencia_id=transferencia.id)
