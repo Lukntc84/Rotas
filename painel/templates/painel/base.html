@@ -133,7 +133,12 @@
         {% if can_view_paletes %}
           <!-- link Monitor de Paletes -->
         {% endif %}
-        <a class="drawer-link" href="{% url 'painel:rotas_hoje' %}"><i class="fas fa-route"></i> Rotas</a>
+       
+        {% if is_motoboy or request.user.is_staff or request.user.is_superuser %}
+          <a class="drawer-link" href="{% url 'painel:rotas_hoje' %}">
+            <i class="fas fa-route"></i> Rotas
+          </a>
+        {% endif %}
         
         {% if perms.rotas.add_rota %}
           <a class="drawer-link" href="{% url 'painel:criar_rota' %}"><i class="fas fa-plus"></i> Nova rota</a>

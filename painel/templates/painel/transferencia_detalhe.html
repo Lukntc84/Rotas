@@ -52,6 +52,37 @@
         border-radius: 4px;
         font-family: monospace;
     }
+
+    .retirado-form-wrap {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.retirado-input {
+  flex: 1;
+  height: 42px;
+  min-width: 0;
+}
+
+.retirado-btn {
+  height: 42px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .retirado-form-wrap {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .retirado-input,
+  .retirado-btn {
+    width: 100%;
+  }
+}
 </style>
 
 <div class="card">
@@ -86,9 +117,21 @@
           {% csrf_token %}
           <label style="font-size: 0.85rem; color: #4a5568;"><strong>Conferido/Retirado por:</strong></label>
           {% if t.status == 'pendente' %}
-            <div style="display: flex; gap: 5px; margin-top: 5px;">
-              <input type="text" name="retirado_por" value="{{ t.retirado_por|default:'' }}" class="input" style="flex: 1; height: 35px;" placeholder="Nome do conferente" />
-              <button type="submit" name="atualizar_retirado" class="btn btn-primary" style="padding: 0 15px;">Salvar</button>
+            <div class="retirado-form-wrap">
+              <input
+                type="text"
+                name="retirado_por"
+                value="{{ t.retirado_por|default:'' }}"
+                class="input retirado-input"
+                placeholder="Nome do conferente"
+              />
+
+              <button
+                type="submit"
+                name="atualizar_retirado"
+                class="btn btn-primary retirado-btn">
+                Salvar
+              </button>
             </div>
           {% else %}
             <div style="margin-top: 5px; font-weight: bold; color: #2d3748;">{{ t.retirado_por|default:'—' }}</div>

@@ -19,432 +19,457 @@
 
 {% block content %}
 
-  {# ✅ NOVO: CSS só para checkboxes (não mexe no resto) #}
-  <style>
-    /* ==========================
-       CHECKBOX UI (padronizado)
-       ========================== */
-    input[type="checkbox"].cb-ui{
-      appearance: none;
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 5px;
-      border: 2px solid #cbd5e1;
-      background: #fff;
-      display: inline-grid;
-      place-content: center;
-      cursor: pointer;
-      transition: all .15s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,.06);
-      flex: 0 0 auto;
+<style>
+  input[type="checkbox"].cb-ui{
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+    display: inline-grid;
+    place-content: center;
+    cursor: pointer;
+    transition: all .15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,.06);
+    flex: 0 0 auto;
+  }
+
+  input[type="checkbox"].cb-ui:hover{ border-color: #0ea5e9; }
+
+  input[type="checkbox"].cb-ui:focus{
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(14,165,233,.18);
+    border-color: #0ea5e9;
+  }
+
+  input[type="checkbox"].cb-ui:checked{
+    background: #16a34a;
+    border-color: #16a34a;
+  }
+
+  input[type="checkbox"].cb-ui:checked::before{
+    content: "";
+    width: 10px;
+    height: 6px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg);
+    margin-top: -1px;
+  }
+
+  input[type="checkbox"].cb-ui:disabled{
+    cursor: not-allowed;
+    opacity: .55;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    box-shadow: none;
+  }
+
+  .cb-label{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    user-select:none;
+  }
+
+  /* ✅ AJUSTE MOBILE DA TELA DE ROTA */
+  .rota-pedidos-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .rota-pedidos-card {
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    padding:10px;
+    min-width: 0;
+  }
+
+  .rota-bulk-actions {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin: 8px 0 12px 0;
+  }
+
+  .rota-protocolo-row {
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:flex-start;
+  }
+
+  .rota-protocolo-actions {
+    text-align:right;
+    min-width: 150px;
+  }
+
+  @media (max-width: 768px) {
+    .list-item {
+      overflow: visible !important;
     }
 
-    input[type="checkbox"].cb-ui:hover{
-      border-color: #0ea5e9;
+    .rota-pedidos-grid {
+      grid-template-columns: 1fr !important;
+      gap: 14px !important;
+      width: 100% !important;
+      overflow: visible !important;
     }
 
-    input[type="checkbox"].cb-ui:focus{
-      outline: none;
-      box-shadow: 0 0 0 4px rgba(14,165,233,.18);
-      border-color: #0ea5e9;
+    .rota-pedidos-card {
+      width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
     }
 
-    input[type="checkbox"].cb-ui:checked{
-      background: #16a34a;
-      border-color: #16a34a;
+    .rota-bulk-actions {
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 10px !important;
     }
 
-    input[type="checkbox"].cb-ui:checked::before{
-      content: "";
-      width: 10px;
-      height: 6px;
-      border-left: 2px solid #fff;
-      border-bottom: 2px solid #fff;
-      transform: rotate(-45deg);
-      margin-top: -1px;
+    .rota-bulk-actions .btn {
+      width: 100% !important;
+      white-space: normal !important;
+      line-height: 1.2 !important;
+      padding: 12px 10px !important;
     }
 
-    input[type="checkbox"].cb-ui:disabled{
-      cursor: not-allowed;
-      opacity: .55;
-      background: #f1f5f9;
-      border-color: #cbd5e1;
-      box-shadow: none;
+    .rota-protocolo-row {
+      flex-direction: column !important;
+      gap: 10px !important;
     }
 
-    /* deixa o clique no label confortável */
-    .cb-label{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      user-select:none;
+    .rota-protocolo-actions {
+      width: 100% !important;
+      min-width: 0 !important;
+      text-align: left !important;
     }
-  </style>
 
-  <div class="card">
-    <div class="card-title">
-      <h2>Paradas da Rota</h2>
-      <span class="badge" id="count-badge">{{ paradas|length }} loja(s)</span>
-    </div>
+    .rota-protocolo-actions .btn {
+      width: 100% !important;
+      margin-top: 8px !important;
+    }
 
-    <ul class="list" id="paradas-list">
-      {% for p in paradas %}
-        <li class="list-item" data-id="{{ p.id }}" style="cursor: grab;">
-          <div class="drag-handle" style="margin-right: 15px; color: #ccc;">↕</div>
+    details summary span {
+      display: inline-block;
+      margin-left: 0 !important;
+      margin-top: 6px;
+      line-height: 1.3;
+    }
+  }
+</style>
 
-          <div style="flex-grow: 1;">
-            <div>
-              <strong class="ordem-numero">{{ p.ordem }}</strong> - {{ p.loja.nome }}
-            </div>
-            <div class="small muted">{{ p.loja.endereco }}, {{ p.loja.numero }}</div>
-            <div class="small">
-              Status:
-              <span class="badge {% if p.status == 'coletado' %}badge-success{% endif %}">{{ p.get_status_display }}</span>
-            </div>
-
-            {# ✅ NOVO: pedidos/protocolos da rota por loja (expandir/colapsar) #}
-            <div style="margin-top: 10px;">
-              <details style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px;">
-                <summary style="cursor:pointer; font-weight:800; color:#0ea5e9; list-style:none;">
-                  Ver pedidos dessa loja
-                  <span style="margin-left:10px; font-weight:700; color:#475569;">
-                    (📦 {{ p.qtd_coletar|default:0 }} coletar • 📍 {{ p.qtd_entregar|default:0 }} entregar)
-                  </span>
-                </summary>
-
-                <div style="margin-top:12px; display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                  {# COLLECT #}
-                  <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px;">
-                    <div style="font-weight:900; margin-bottom:8px;">📦 Para coletar (origem)</div>
-
-                    {# ✅ NOVO: AÇÕES EM LOTE (COLETA) #}
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin: 8px 0 12px 0;">
-                      <label class="cb-label" style="font-weight:700; color:#334155;">
-                        {# ✅ ALTERADO: adicionada classe cb-ui #}
-                        <input type="checkbox" class="chk-all-coleta cb-ui" data-loja="{{ p.loja.id }}">
-                        Selecionar todos
-                      </label>
-
-                      <button type="button"
-                              class="btn btn-sm btn-success btn-bulk-coleta"
-                              data-loja="{{ p.loja.id }}"
-                              data-rota="{{ rota.id }}"
-                              style="font-weight:800;">
-                        ✅ Confirmar coletas selecionadas
-                      </button>
-                    </div>
-
-                    {% if p.transfs_coletar %}
-                      {% for t in p.transfs_coletar %}
-                        <div style="padding:10px 12px; border:1px solid #eef2f7; border-radius:12px; margin-bottom:10px; background:#fff;">
-                          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                            <div>
-                              <div style="font-weight:900; font-size:1rem;">Protocolo #{{ t.id }}</div>
-                              <div class="small muted">{{ t.quantidade }}x {{ t.nome_produto|default:"(sem produto)" }}</div>
-                              <div class="small">Nº Transf: #{{ t.numero_transferencia|default:"---" }}</div>
-
-                              {# ✅ NOVO: checkbox para lote (só aparece se pendente) #}
-                              {% if t.status == "pendente" %}
-                                <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
-                                  {# ✅ ALTERADO: adicionada classe cb-ui #}
-                                  <input type="checkbox"
-                                         class="chk-coleta cb-ui"
-                                         data-loja="{{ p.loja.id }}"
-                                         value="{{ t.id }}">
-                                  Selecionar
-                                </label>
-                              {% endif %}
-                            </div>
-
-                            <div style="text-align:right; min-width: 150px;">
-                              <span class="badge">{{ t.status }}</span><br>
-
-                              <a class="btn btn-sm btn-primary" style="margin-top:6px;" href="{% url 'painel:transferencia_detalhe' t.id %}">
-                                Abrir
-                              </a>
-
-                              {# ✅ ETAPA 1: Confirmar coleta individual (mantida) #}
-                              {% if t.status == "pendente" %}
-                                <form method="post" action="{% url 'painel:confirmar_coleta' t.id %}" style="margin-top:6px;">
-                                  {% csrf_token %}
-                                  <button type="button"
-                                          class="btn btn-sm btn-success btn-coleta-ajax"
-                                          data-url="{% url 'painel:confirmar_coleta' t.id %}"
-                                          data-id="{{ t.id }}"
-                                          style="margin-top:6px;">
-                                    ✅ Confirmar coleta
-                                  </button>
-                                </form>
-                              {% endif %}
-                            </div>
-                          </div>
-                        </div>
-                      {% endfor %}
-                    {% else %}
-                      <div class="small muted">Nenhum pedido para coletar aqui.</div>
-                    {% endif %}
-                  </div>
-
-                  {# DELIVER #}
-                  <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px;">
-                    <div style="font-weight:900; margin-bottom:8px;">📍 Para entregar (destino)</div>
-
-                    {# ✅ NOVO: AÇÕES EM LOTE (ENTREGA) #}
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin: 8px 0 12px 0;">
-                      <label class="cb-label" style="font-weight:700; color:#334155;">
-                        {# ✅ ALTERADO: adicionada classe cb-ui #}
-                        <input type="checkbox" class="chk-all-entrega cb-ui" data-loja="{{ p.loja.id }}">
-                        Selecionar todos
-                      </label>
-
-                      <button type="button"
-                              class="btn btn-sm btn-success btn-bulk-entrega"
-                              data-loja="{{ p.loja.id }}"
-                              data-rota="{{ rota.id }}"
-                              style="font-weight:800;">
-                        📍 Confirmar entregas selecionadas
-                      </button>
-                    </div>
-
-                    {% if p.transfs_entregar %}
-                      {% for t in p.transfs_entregar %}
-                        <div style="padding:10px 12px; border:1px solid #eef2f7; border-radius:12px; margin-bottom:10px; background:#fff;">
-                          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                            <div>
-                              <div style="font-weight:900; font-size:1rem;">Protocolo #{{ t.id }}</div>
-                              <div class="small muted">{{ t.quantidade }}x {{ t.nome_produto|default:"(sem produto)" }}</div>
-                              <div class="small">Nº Transf: #{{ t.numero_transferencia|default:"---" }}</div>
-
-                              {# ✅ NOVO: checkbox para lote (só aparece se em_transito) #}
-                              {% if t.status == "em_transito" %}
-                                <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
-                                  {# ✅ ALTERADO: adicionada classe cb-ui #}
-                                  <input type="checkbox"
-                                        class="chk-entrega cb-ui"
-                                        data-loja="{{ p.loja.id }}"
-                                        value="{{ t.id }}">
-                                  Selecionar
-                                </label>
-                              {% endif %}
-                            </div>
-
-                            <div style="text-align:right; min-width: 150px;">
-                              <span class="badge">{{ t.status }}</span><br>
-
-                              <a class="btn btn-sm btn-primary" style="margin-top:6px;" href="{% url 'painel:transferencia_detalhe' t.id %}">
-                                Abrir
-                              </a>
-
-                              {# ✅ ETAPA 2: Confirmar entrega individual (mantida) #}
-                              {% if t.status == "em_transito" %}
-                                <form method="post" action="{% url 'painel:confirmar_recebimento' t.id %}" style="margin-top:6px;"
-                                      onsubmit="return confirm('Confirmar entrega do Protocolo #{{ t.id }}?');">
-                                  {% csrf_token %}
-                                  <button type="submit" class="btn btn-sm btn-success">
-                                    📍 Confirmar entrega
-                                  </button>
-                                </form>
-                              {% endif %}
-                            </div>
-                          </div>
-                        </div>
-                      {% endfor %}
-                    {% endif %}
-                  </div>
-                </div>
-              </details>
-            </div>
-            {# ✅ FIM do bloco novo #}
-
-          </div>
-
-         {% comment "" %}
-          <div class="actions">
-            {% if p.status != 'coletado' %}
-              <form method="post" action="{% url 'painel:marcar_coletado' p.id %}">
-                {% csrf_token %}
-                <button class="btn btn-primary" type="submit">Marcar coletado</button>
-              </form>
-            {% else %}
-              <span style="color: green; font-weight: bold;">✔ Coletado</span>
-            {% endif %}
-          </div>
-          {% endcomment %}
-        </li>
-      {% empty %}
-        <li class="list-item">
-          <span class="muted">Nenhuma parada gerada para esta rota.</span>
-        </li>
-      {% endfor %}
-    </ul>
+<div class="card">
+  <div class="card-title">
+    <h2>Paradas da Rota</h2>
+    <span class="badge" id="count-badge">{{ paradas|length }} loja(s)</span>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script>
-    const el = document.getElementById('paradas-list')
-    const rotaId = '{{ rota.id }}'
+  <ul class="list" id="paradas-list">
+    {% for p in paradas %}
+      <li class="list-item" data-id="{{ p.id }}" style="cursor: grab;">
+        <div class="drag-handle" style="margin-right: 15px; color: #ccc;">↕</div>
 
-    function getCookie(name) {
-      let cookieValue = null
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';')
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim()
-          if (cookie.substring(0, name.length + 1) === name + '=') {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
-            break
-          }
-        }
-      }
-      return cookieValue
-    }
+        <div style="flex-grow: 1;">
+          <div>
+            <strong class="ordem-numero">{{ p.ordem }}</strong> - {{ p.loja.nome }}
+          </div>
+          <div class="small muted">{{ p.loja.endereco }}, {{ p.loja.numero }}</div>
+          <div class="small">
+            Status:
+            <span class="badge {% if p.status == 'coletado' %}badge-success{% endif %}">{{ p.get_status_display }}</span>
+          </div>
 
-    if (el) {
-      new Sortable(el, {
-        animation: 150,
-        // handle: '.drag-handle',  <-- REMOVA OU COMENTE ESTA LINHA
-        ghostClass: 'dragging',
-        onEnd: async function () {
-          const ids = [...el.querySelectorAll('li[data-id]')].map((li) => li.dataset.id)
+          <div style="margin-top: 10px;">
+            <details style="background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px;">
+              <summary style="cursor:pointer; font-weight:800; color:#0ea5e9; list-style:none;">
+                Ver pedidos dessa loja
+                <span style="margin-left:10px; font-weight:700; color:#475569;">
+                  (📦 {{ p.qtd_coletar|default:0 }} coletar • 📍 {{ p.qtd_entregar|default:0 }} entregar)
+                </span>
+              </summary>
 
-          const response = await fetch(`/painel/rotas/${rotaId}/reordenar/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({ ids: ids })
-          })
+              <div class="rota-pedidos-grid">
+                <div class="rota-pedidos-card">
+                  <div style="font-weight:900; margin-bottom:8px;">📦 Para coletar (origem)</div>
 
-          const result = await response.json()
-          if (response.ok && result.ok === true) {
-            el.querySelectorAll('.ordem-numero').forEach((span, index) => {
-              span.textContent = index + 1
-            })
-          } else {
-            alert('Erro: ' + (result.error || 'Não foi possível salvar a ordem.'))
-          }
-        }
-      })
-    }
+                  <div class="rota-bulk-actions">
+                    <label class="cb-label" style="font-weight:700; color:#334155;">
+                      <input type="checkbox" class="chk-all-coleta cb-ui" data-loja="{{ p.loja.id }}">
+                      Selecionar todos
+                    </label>
 
-    // ============================
-    // ✅ NOVO: CONFIRMAÇÃO EM LOTE
-    // ============================
+                    <button type="button"
+                            class="btn btn-sm btn-success btn-bulk-coleta"
+                            data-loja="{{ p.loja.id }}"
+                            data-rota="{{ rota.id }}"
+                            style="font-weight:800;">
+                      ✅ Confirmar coletas selecionadas
+                    </button>
+                  </div>
 
-    async function postBulk(url, ids) {
-      const form = new FormData();
-      ids.forEach(id => form.append("ids[]", id));
+                  {% if p.transfs_coletar %}
+                    {% for t in p.transfs_coletar %}
+                      <div style="padding:10px 12px; border:1px solid #eef2f7; border-radius:12px; margin-bottom:10px; background:#fff;">
+                        <div class="rota-protocolo-row">
+                          <div>
+                            <div style="font-weight:900; font-size:1rem;">Protocolo #{{ t.id }}</div>
+                            <div class="small muted">{{ t.quantidade }}x {{ t.nome_produto|default:"(sem produto)" }}</div>
+                            <div class="small">Nº Transf: #{{ t.numero_transferencia|default:"---" }}</div>
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie("csrftoken") },
-        body: form
-      });
+                            {% if t.status == "pendente" %}
+                              <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
+                                <input type="checkbox"
+                                       class="chk-coleta cb-ui"
+                                       data-loja="{{ p.loja.id }}"
+                                       value="{{ t.id }}">
+                                Selecionar
+                              </label>
+                            {% endif %}
+                          </div>
 
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || "Erro ao confirmar em lote.");
-      }
-      return data;
-    }
+                          <div class="rota-protocolo-actions">
+                            <span class="badge">{{ t.status }}</span><br>
 
-    document.addEventListener("DOMContentLoaded", () => {
-      // Selecionar todos (coleta)
-      document.querySelectorAll(".chk-all-coleta").forEach(all => {
-        all.addEventListener("change", () => {
-          const loja = all.dataset.loja;
-          document.querySelectorAll(`.chk-coleta[data-loja="${loja}"]`).forEach(chk => {
-            chk.checked = all.checked;
-          });
-        });
-      });
+                            <a class="btn btn-sm btn-primary" style="margin-top:6px;" href="{% url 'painel:transferencia_detalhe' t.id %}">
+                              Abrir
+                            </a>
 
-      // Selecionar todos (entrega)
-      document.querySelectorAll(".chk-all-entrega").forEach(all => {
-        all.addEventListener("change", () => {
-          const loja = all.dataset.loja;
-          document.querySelectorAll(`.chk-entrega[data-loja="${loja}"]`).forEach(chk => {
-            chk.checked = all.checked;
-          });
-        });
-      });
+                            {% if t.status == "pendente" %}
+                              <form method="post" action="{% url 'painel:confirmar_coleta' t.id %}" style="margin-top:6px;">
+                                {% csrf_token %}
+                                <button type="button"
+                                        class="btn btn-sm btn-success btn-coleta-ajax"
+                                        data-url="{% url 'painel:confirmar_coleta' t.id %}"
+                                        data-id="{{ t.id }}"
+                                        style="margin-top:6px;">
+                                  ✅ Confirmar coleta
+                                </button>
+                              </form>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <div class="small muted">Nenhum pedido para coletar aqui.</div>
+                  {% endif %}
+                </div>
 
-      // Bulk Coleta (não abre transferência, continua na mesma tela)
-      document.querySelectorAll(".btn-bulk-coleta").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const loja = btn.dataset.loja;
-          const rota = btn.dataset.rota;
+                <div class="rota-pedidos-card">
+                  <div style="font-weight:900; margin-bottom:8px;">📍 Para entregar (destino)</div>
 
-          const ids = [...document.querySelectorAll(`.chk-coleta[data-loja="${loja}"]:checked`)].map(x => x.value);
+                  <div class="rota-bulk-actions">
+                    <label class="cb-label" style="font-weight:700; color:#334155;">
+                      <input type="checkbox" class="chk-all-entrega cb-ui" data-loja="{{ p.loja.id }}">
+                      Selecionar todos
+                    </label>
 
-          if (!ids.length) {
-            alert("Selecione pelo menos um protocolo para confirmar coleta.");
-            return;
-          }
-          if (!confirm(`Confirmar coleta de ${ids.length} protocolo(s)?`)) return;
+                    <button type="button"
+                            class="btn btn-sm btn-success btn-bulk-entrega"
+                            data-loja="{{ p.loja.id }}"
+                            data-rota="{{ rota.id }}"
+                            style="font-weight:800;">
+                      📍 Confirmar entregas selecionadas
+                    </button>
+                  </div>
 
-          btn.disabled = true;
-          try {
-            await postBulk(`/painel/rotas/${rota}/coletas/bulk/`, ids);
-            location.reload(); // ✅ continua na mesma tela
-          } catch (e) {
-            alert(e.message);
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
+                  {% if p.transfs_entregar %}
+                    {% for t in p.transfs_entregar %}
+                      <div style="padding:10px 12px; border:1px solid #eef2f7; border-radius:12px; margin-bottom:10px; background:#fff;">
+                        <div class="rota-protocolo-row">
+                          <div>
+                            <div style="font-weight:900; font-size:1rem;">Protocolo #{{ t.id }}</div>
+                            <div class="small muted">{{ t.quantidade }}x {{ t.nome_produto|default:"(sem produto)" }}</div>
+                            <div class="small">Nº Transf: #{{ t.numero_transferencia|default:"---" }}</div>
 
-      // Bulk Entrega (não abre transferência, continua na mesma tela)
-      document.querySelectorAll(".btn-bulk-entrega").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const loja = btn.dataset.loja;
-          const rota = btn.dataset.rota;
+                            {% if t.status == "em_transito" %}
+                              <label class="cb-label" style="margin-top:8px; font-weight:700; color:#334155;">
+                                <input type="checkbox"
+                                       class="chk-entrega cb-ui"
+                                       data-loja="{{ p.loja.id }}"
+                                       value="{{ t.id }}">
+                                Selecionar
+                              </label>
+                            {% endif %}
+                          </div>
 
-          const ids = [...document.querySelectorAll(`.chk-entrega[data-loja="${loja}"]:checked`)].map(x => x.value);
+                          <div class="rota-protocolo-actions">
+                            <span class="badge">{{ t.status }}</span><br>
 
-          if (!ids.length) {
-            alert("Selecione pelo menos um protocolo para confirmar entrega.");
-            return;
-          }
-          if (!confirm(`Confirmar entrega de ${ids.length} protocolo(s)?`)) return;
+                            <a class="btn btn-sm btn-primary" style="margin-top:6px;" href="{% url 'painel:transferencia_detalhe' t.id %}">
+                              Abrir
+                            </a>
 
-          btn.disabled = true;
-          try {
-            await postBulk(`/painel/rotas/${rota}/entregas/bulk/`, ids);
-            location.reload(); // ✅ continua na mesma tela
-          } catch (e) {
-            alert(e.message);
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
+                            {% if t.status == "em_transito" %}
+                              <form method="post" action="{% url 'painel:confirmar_recebimento' t.id %}" style="margin-top:6px;"
+                                    onsubmit="return confirm('Confirmar entrega do Protocolo #{{ t.id }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-success">
+                                  📍 Confirmar entrega
+                                </button>
+                              </form>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  {% else %}
+                    <div class="small muted">Nenhum pedido para entregar aqui.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </li>
+    {% empty %}
+      <li class="list-item">
+        <span class="muted">Nenhuma parada gerada para esta rota.</span>
+      </li>
+    {% endfor %}
+  </ul>
+</div>
 
-      window.addEventListener("pageshow", function (event) {
-        if (event.persisted) {
-          window.location.reload();
-        }
-      });
-    });
-     function getCookie(name) {
-    let cookieValue = null;
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+  const el = document.getElementById('paradas-list')
+  const rotaId = '{{ rota.id }}'
+
+  function getCookie(name) {
+    let cookieValue = null
     if (document.cookie && document.cookie !== '') {
-      const cookies = document.cookie.split(';');
+      const cookies = document.cookie.split(';')
       for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim();
+        const cookie = cookies[i].trim()
         if (cookie.substring(0, name.length + 1) === name + '=') {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-          break;
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+          break
         }
       }
     }
-    return cookieValue;
+    return cookieValue
+  }
+
+  if (el) {
+    new Sortable(el, {
+      animation: 150,
+      ghostClass: 'dragging',
+      onEnd: async function () {
+        const ids = [...el.querySelectorAll('li[data-id]')].map((li) => li.dataset.id)
+
+        const response = await fetch(`/painel/rotas/${rotaId}/reordenar/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
+          body: JSON.stringify({ ids: ids })
+        })
+
+        const result = await response.json()
+        if (response.ok && result.ok === true) {
+          el.querySelectorAll('.ordem-numero').forEach((span, index) => {
+            span.textContent = index + 1
+          })
+        } else {
+          alert('Erro: ' + (result.error || 'Não foi possível salvar a ordem.'))
+        }
+      }
+    })
+  }
+
+  async function postBulk(url, ids) {
+    const form = new FormData();
+    ids.forEach(id => form.append("ids[]", id));
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "X-CSRFToken": getCookie("csrftoken") },
+      body: form
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      throw new Error(data.error || "Erro ao confirmar em lote.");
+    }
+    return data;
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".chk-all-coleta").forEach(all => {
+      all.addEventListener("change", () => {
+        const loja = all.dataset.loja;
+        document.querySelectorAll(`.chk-coleta[data-loja="${loja}"]`).forEach(chk => {
+          chk.checked = all.checked;
+        });
+      });
+    });
+
+    document.querySelectorAll(".chk-all-entrega").forEach(all => {
+      all.addEventListener("change", () => {
+        const loja = all.dataset.loja;
+        document.querySelectorAll(`.chk-entrega[data-loja="${loja}"]`).forEach(chk => {
+          chk.checked = all.checked;
+        });
+      });
+    });
+
+    document.querySelectorAll(".btn-bulk-coleta").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const loja = btn.dataset.loja;
+        const rota = btn.dataset.rota;
+        const ids = [...document.querySelectorAll(`.chk-coleta[data-loja="${loja}"]:checked`)].map(x => x.value);
+
+        if (!ids.length) {
+          alert("Selecione pelo menos um protocolo para confirmar coleta.");
+          return;
+        }
+        if (!confirm(`Confirmar coleta de ${ids.length} protocolo(s)?`)) return;
+
+        btn.disabled = true;
+        try {
+          await postBulk(`/painel/rotas/${rota}/coletas/bulk/`, ids);
+          location.reload();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-bulk-entrega").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const loja = btn.dataset.loja;
+        const rota = btn.dataset.rota;
+        const ids = [...document.querySelectorAll(`.chk-entrega[data-loja="${loja}"]:checked`)].map(x => x.value);
+
+        if (!ids.length) {
+          alert("Selecione pelo menos um protocolo para confirmar entrega.");
+          return;
+        }
+        if (!confirm(`Confirmar entrega de ${ids.length} protocolo(s)?`)) return;
+
+        btn.disabled = true;
+        try {
+          await postBulk(`/painel/rotas/${rota}/entregas/bulk/`, ids);
+          location.reload();
+        } catch (e) {
+          alert(e.message);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    });
+
     document.querySelectorAll(".btn-coleta-ajax").forEach(btn => {
       btn.addEventListener("click", async () => {
         const url = btn.dataset.url;
@@ -467,7 +492,6 @@
             return;
           }
 
-          // ✅ Fica na mesma tela e atualiza o status
           location.reload();
         } catch (e) {
           console.error(e);
@@ -476,6 +500,12 @@
         }
       });
     });
+
+    window.addEventListener("pageshow", function (event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
   });
-  </script>
+</script>
 {% endblock %}
