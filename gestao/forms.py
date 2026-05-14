@@ -13,6 +13,7 @@ ROLE_CHOICES = [
     ("Admin", "Admin"),
     ("Operador", "Operador"),
     ("Motoboy", "Motoboy"),
+    ("Loja", "Loja"),
 ]
 
 User = get_user_model()
@@ -48,23 +49,69 @@ class UsuarioCriarForm(forms.Form):
 
 
 class UsuarioEditarForm(forms.ModelForm):
-    role = forms.ChoiceField(choices=ROLE_CHOICES, label="Grupo")
-    # Este campo aparecerá automaticamente no as_p
-    telefone = forms.CharField(label="Telefone / WhatsApp", required=False)
+    role = forms.ChoiceField(
+        choices=ROLE_CHOICES,
+        label="Grupo",
+        widget=forms.Select(attrs={"class": "form-control"})
+    )
+
+    telefone = forms.CharField(
+        label="Telefone / WhatsApp",
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"})
+    )
+
+    vincular_loja = forms.ModelChoiceField(
+        queryset=Loja.objects.none(),
+        required=False,
+        label="Vincular a qual Loja?",
+        widget=forms.Select(attrs={"class": "form-control"})
+    )
 
     class Meta:
         model = User
         fields = ["username", "email", "first_name", "last_name", "is_active"]
+        widgets = {
+            "username": forms.TextInput(attrs={"class": "form-control"}),
+            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "first_name": forms.TextInput(attrs={"class": "form-control"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Carrega o telefone atual do perfil para o formulário
-        if self.instance and self.instance.pk:
+
+        usuario = self.instance
+
+        # Telefone atual
+        if usuario and usuario.pk:
             try:
-                self.fields["telefone"].initial = self.instance.perfil.telefone
-            except:
+                self.fields["telefone"].initial = usuario.perfil.telefone
+            except Exception:
                 self.fields["telefone"].initial = ""
 
+        # Grupo atual
+        grupo_atual = usuario.groups.first().name if usuario and usuario.pk and usuario.groups.exists() else "Operador"
+
+        if grupo_atual == "AdminInterno":
+            grupo_atual = "Admin"
+
+        self.fields["role"].initial = grupo_atual
+
+        # Loja vinculada atual
+        loja_atual = None
+        if usuario and usuario.pk:
+            loja_atual = Loja.objects.filter(usuario=usuario).first()
+
+        lojas_livres = Loja.objects.filter(usuario__isnull=True, ativa=True)
+
+        if loja_atual:
+            self.fields["vincular_loja"].queryset = (
+                Loja.objects.filter(id=loja_atual.id) | lojas_livres
+            ).distinct().order_by("nome")
+            self.fields["vincular_loja"].initial = loja_atual
+        else:
+            self.fields["vincular_loja"].queryset = lojas_livres.order_by("nome")
 
 class UsuarioGrupoForm(forms.Form):
     role = forms.ChoiceField(choices=ROLE_CHOICES, label="Grupo")

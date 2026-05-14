@@ -138,24 +138,45 @@ def usuario_criar(request):
     })
 
 @admin_interno_required
+@admin_interno_required
 def usuario_editar(request, user_id):
     u = get_object_or_404(User, id=user_id)
 
     if request.method == "POST":
         form = UsuarioEditarForm(request.POST, instance=u)
+
         if form.is_valid():
             with transaction.atomic():
-                # Salva os dados básicos (User)
                 u = form.save()
-                _set_group(u, form.cleaned_data["role"])
-                
-                # Salva o telefone (Perfil)
+
+                role = form.cleaned_data["role"]
+                _set_group(u, role)
+
+                if role == "Admin":
+                    u.is_staff = True
+                    u.is_superuser = True
+                    u.save(update_fields=["is_staff", "is_superuser"])
+                else:
+                    u.is_staff = False
+                    u.is_superuser = False
+                    u.save(update_fields=["is_staff", "is_superuser"])
+
+                # Salva telefone
                 from rotas.models import Perfil
                 p, _ = Perfil.objects.get_or_create(user=u)
-                p.telefone = form.cleaned_data["telefone"]
+                p.telefone = form.cleaned_data.get("telefone") or ""
                 p.save()
-                
-            messages.success(request, "Usuário e telefone atualizados!")
+
+                # Remove vínculo antigo de loja
+                Loja.objects.filter(usuario=u).update(usuario=None)
+
+                # Vincula nova loja somente se função for Loja
+                loja = form.cleaned_data.get("vincular_loja")
+                if role == "Loja" and loja:
+                    loja.usuario = u
+                    loja.save(update_fields=["usuario"])
+
+            messages.success(request, "Usuário atualizado com sucesso!")
             return redirect("gestao:usuarios_lista")
     else:
         form = UsuarioEditarForm(instance=u)
