@@ -98,20 +98,18 @@ class UsuarioEditarForm(forms.ModelForm):
 
         self.fields["role"].initial = grupo_atual
 
-        # Loja vinculada atual
         loja_atual = None
-        if usuario and usuario.pk:
-            loja_atual = Loja.objects.filter(usuario=usuario).first()
 
-        lojas_livres = Loja.objects.filter(usuario__isnull=True, ativa=True)
+        if usuario and usuario.pk:
+            perfil = getattr(usuario, "perfil", None)
+            if perfil:
+                loja_atual = perfil.loja
+
+        self.fields["vincular_loja"].queryset = Loja.objects.filter(ativa=True).order_by("nome")
 
         if loja_atual:
-            self.fields["vincular_loja"].queryset = (
-                Loja.objects.filter(id=loja_atual.id) | lojas_livres
-            ).distinct().order_by("nome")
             self.fields["vincular_loja"].initial = loja_atual
-        else:
-            self.fields["vincular_loja"].queryset = lojas_livres.order_by("nome")
+
 
 class UsuarioGrupoForm(forms.Form):
     role = forms.ChoiceField(choices=ROLE_CHOICES, label="Grupo")

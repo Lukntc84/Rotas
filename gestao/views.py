@@ -110,11 +110,17 @@ def usuario_criar(request):
                         from rotas.models import Perfil # ajuste o import se necessário
                         Perfil.objects.update_or_create(user=user, defaults={'telefone': telefone})
 
-                    # 4. Vincula à Loja se for o caso
+                    from rotas.models import Perfil
+
+                    perfil, _ = Perfil.objects.get_or_create(user=user)
+
                     if role == "Loja" and loja_id:
                         loja = get_object_or_404(Loja, id=loja_id)
-                        loja.usuario = user
-                        loja.save()
+                        perfil.loja = loja
+                    else:
+                        perfil.loja = None
+
+                    perfil.save()
 
                     # 5. Define a senha (lógica original)
                     p1 = (form.cleaned_data.get("password1") or "").strip()
@@ -167,14 +173,14 @@ def usuario_editar(request, user_id):
                 p.telefone = form.cleaned_data.get("telefone") or ""
                 p.save()
 
-                # Remove vínculo antigo de loja
-                Loja.objects.filter(usuario=u).update(usuario=None)
-
-                # Vincula nova loja somente se função for Loja
                 loja = form.cleaned_data.get("vincular_loja")
+
                 if role == "Loja" and loja:
-                    loja.usuario = u
-                    loja.save(update_fields=["usuario"])
+                    p.loja = loja
+                else:
+                    p.loja = None
+
+                p.save()
 
             messages.success(request, "Usuário atualizado com sucesso!")
             return redirect("gestao:usuarios_lista")
@@ -407,10 +413,9 @@ def transferencia_create(request):
     return render(request, "painel/transferencia_form.html", {"form": form})
 
 
-def _get_loja_usuario(user):
-    # Ajuste aqui se no seu projeto o vínculo for outro.
-    return getattr(user, "loja_perfil", None)
-
+def get_loja_usuario(user):
+    perfil = getattr(user, "perfil", None)
+    return perfil.loja if perfil else None
 
 def _is_motoboy(user):
     return user.groups.filter(name="Motoboy").exists()
