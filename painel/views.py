@@ -230,15 +230,20 @@ def rota_detalhe(request, rota_id):
         if t.loja_destino_id:
             por_destino[t.loja_destino_id].append(t)
 
-    # ✅ Anexa no objeto parada as listas (pra usar direto no template)
     for p in paradas:
         loja_id = p.loja_id
 
-        # pedidos para COLETAR nessa loja
-        p.transfs_coletar = por_origem.get(loja_id, [])
+        # Mostra para coleta somente o que ainda está pendente
+        p.transfs_coletar = [
+            t for t in por_origem.get(loja_id, [])
+            if t.status == "pendente"
+        ]
 
-        # pedidos para ENTREGAR nessa loja
-        p.transfs_entregar = por_destino.get(loja_id, [])
+        # Mostra para entrega somente o que já foi coletado/em trânsito
+        p.transfs_entregar = [
+            t for t in por_destino.get(loja_id, [])
+            if t.status == "em_transito"
+        ]
 
         p.qtd_coletar = len(p.transfs_coletar)
         p.qtd_entregar = len(p.transfs_entregar)
@@ -634,9 +639,18 @@ def paradas_loja(request):
     
     return render(request, "painel/minhas_paradas.html", {"paradas": paradas})
 
+def _is_operador(user):
+    return user.groups.filter(name="Operador").exists()
+
 def _get_loja_usuario(user):
-    # Retorna o objeto Loja se o usuário estiver vinculado a uma, senão None
-    return getattr(user, 'loja_perfil', None)
+    if not user or not user.is_authenticated:
+        return None
+
+    perfil = getattr(user, "perfil", None)
+    if perfil and hasattr(perfil, "loja"):
+        return perfil.loja
+
+    return None
 
 @login_required
 def minhas_paradas(request):

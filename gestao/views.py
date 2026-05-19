@@ -413,12 +413,20 @@ def transferencia_create(request):
     return render(request, "painel/transferencia_form.html", {"form": form})
 
 
-def get_loja_usuario(user):
-    perfil = getattr(user, "perfil", None)
-    return perfil.loja if perfil else None
-
 def _is_motoboy(user):
     return user.groups.filter(name="Motoboy").exists()
+
+
+def _get_loja_usuario(user):
+    if not user or not user.is_authenticated:
+        return None
+
+    perfil = getattr(user, "perfil", None)
+
+    if perfil and hasattr(perfil, "loja"):
+        return perfil.loja
+
+    return None
 
 
 @login_required
