@@ -29,7 +29,7 @@
         <nav class="topbar-nav">
           <a class="topbar-link" href="{% url 'painel:home' %}">Painel</a>
           
-          {% if not user.loja_perfil or user.is_staff %}
+          {% if is_motoboy or request.user.is_staff or request.user.is_superuser %}
             <a class="topbar-link" href="{% url 'painel:rotas_hoje' %}">Rotas</a>
           {% endif %}
 

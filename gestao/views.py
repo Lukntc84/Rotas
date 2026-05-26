@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 from django.db.models import Q
 from .decorators import admin_interno_required
 from .forms import LojaForm, UsuarioCriarForm, UsuarioEditarForm, UsuarioGrupoForm,ProtocoloConfirmarForm, ProtocoloForm, MovimentoEstoqueForm, TransferenciaForm
@@ -380,21 +380,28 @@ def transferencias_lista(request):
 
 
 @login_required
+@permission_required("rotas.add_transferencia", raise_exception=True)
 def transferencia_nova(request):
-    # Opcional: Impedir motoboy de criar, se desejar
-    if request.user.user_type == 'motoboy': 
-        raise PermissionDenied
-
     if request.method == "POST":
-        form = TransferenciaForm(request.POST)
+        form = TransferenciaForm(request.POST, user=request.user)
+
         if form.is_valid():
-            tr = form.save(commit=False)
-            tr.usuario = request.user # Garante que a transferência salve quem a criou
-            tr.save()
-            messages.success(request, f"Protocolo gerado: {tr.protocolo}")
+            t = form.save(commit=False)
+            t.criado_por = request.user
+            t.status = "pendente"
+
+            user_loja = _get_loja_usuario(request.user)
+
+            if user_loja and not request.user.is_staff and not request.user.is_superuser:
+                t.tipo = "saida"
+                t.loja_origem = user_loja
+
+            t.save()
+
+            messages.success(request, "Transferência criada com sucesso!")
             return redirect("painel:transferencias_lista")
     else:
-        form = TransferenciaForm()
+        form = TransferenciaForm(user=request.user)
 
     return render(request, "painel/transferencia_form.html", {"form": form})
 
@@ -422,11 +429,11 @@ def _get_loja_usuario(user):
         return None
 
     perfil = getattr(user, "perfil", None)
+    loja_nova = getattr(perfil, "loja", None)
 
-    if perfil and hasattr(perfil, "loja"):
-        return perfil.loja
+    loja_antiga = getattr(user, "loja_perfil", None)
 
-    return None
+    return loja_nova or loja_antiga
 
 
 @login_required
