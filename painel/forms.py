@@ -44,7 +44,11 @@ class TransferenciaForm(forms.ModelForm):
         ('entrada', 'Entrada'),
         ('saida', 'Saída'),
     ]
-    tipo = forms.ChoiceField(choices=TIPO_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}))
+
+    tipo = forms.ChoiceField(
+        choices=TIPO_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
 
     UNIDADES = [
         ("Unidade", "Unidade"),
@@ -53,7 +57,12 @@ class TransferenciaForm(forms.ModelForm):
         ("Kg", "Kg"),
         ("Litro", "Litro"),
     ]
-    unidade_medida = forms.ChoiceField(choices=UNIDADES, required=False, label="Unidade")
+
+    unidade_medida = forms.ChoiceField(
+        choices=UNIDADES,
+        required=False,
+        label="Unidade"
+    )
 
     class Meta:
         model = Transferencia
@@ -67,15 +76,12 @@ class TransferenciaForm(forms.ModelForm):
             "loja_destino",
             "fornecedor",
             "responsavel",
-            # ✅ removidos:
-            # "motorista",
-            # "retirado_por",
-
             "numero_transferencia",
             "porte_carga",
             "numero_documento",
             "observacoes",
         ]
+
         widgets = {
             "quantidade": forms.NumberInput(attrs={
                 "class": "form-control input-bonitinho-qtd"
@@ -84,13 +90,20 @@ class TransferenciaForm(forms.ModelForm):
                 "type": "date",
                 "class": "form-control input-bonitinho-data"
             }),
-            'numero_transferencia': forms.TextInput(attrs={'class': 'input', 'placeholder': 'Ex: 65456'}),
-            'porte_carga': forms.Select(attrs={'class': 'input'}),
+            "numero_transferencia": forms.TextInput(attrs={
+                "class": "input",
+                "placeholder": "Ex: 65456"
+            }),
+            "porte_carga": forms.Select(attrs={"class": "input"}),
             "tipo": forms.Select(attrs={"class": "form-control"}),
             "loja_origem": forms.Select(attrs={"class": "form-control"}),
             "loja_destino": forms.Select(attrs={"class": "form-control"}),
-            "observacoes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
+            "observacoes": forms.Textarea(attrs={
+                "rows": 3,
+                "class": "form-control"
+            }),
         }
+
         labels = {
             "tipo": "Tipo",
             "nome_produto": "Nome do Produto",
@@ -98,55 +111,71 @@ class TransferenciaForm(forms.ModelForm):
             "quantidade": "Quantidade",
             "fornecedor": "Fornecedor",
             "responsavel": "Responsável",
-            # ✅ removidos:
-            # "motorista": "Motorista",
-            # "retirado_por": "Retirado por",
             "numero_documento": "Nº do Documento (NF/Recibo)",
             "observacoes": "Observações",
             "porte_carga": "Porte da Carga",
         }
 
+    def _get_loja_do_usuario(self, user):
+        """
+        Busca a loja vinculada ao usuário.
+
+        Primeiro tenta o modelo novo:
+        user.perfil.loja
+
+        Depois tenta o modelo antigo:
+        user.loja_perfil
+        """
+        if not user or not user.is_authenticated:
+            return None
+
+        perfil = getattr(user, "perfil", None)
+        loja_nova = getattr(perfil, "loja", None)
+
+        loja_antiga = getattr(user, "loja_perfil", None)
+
+        return loja_nova or loja_antiga
+
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
-        # ✅ IMPORTANTE: guarda o user para usar no save()
         self.user = user
 
-        if user and not user.is_staff:
-            # Filtra a loja de origem baseada no perfil do usuário logado
-            user_loja = getattr(user, 'loja_perfil', None)
-            if user_loja:
-                self.fields['loja_origem'].queryset = Loja.objects.filter(id=user_loja.id)
-                self.fields['loja_origem'].initial = user_loja
-                self.fields['loja_origem'].empty_label = None
+        is_admin = user and (user.is_staff or user.is_superuser)
+        user_loja = self._get_loja_do_usuario(user)
 
-                # ✅ Para usuário de loja: "Tipo" sempre Saída e travado
-                if 'tipo' in self.fields:
-                    self.fields['tipo'].initial = 'saida'
-                    self.fields['tipo'].disabled = True
+        if user and user_loja and not is_admin:
+            self.fields["loja_origem"].queryset = Loja.objects.filter(id=user_loja.id)
+            self.fields["loja_origem"].initial = user_loja
+            self.fields["loja_origem"].empty_label = None
+
+            if "tipo" in self.fields:
+                self.fields["tipo"].initial = "saida"
+                self.fields["tipo"].disabled = True
 
     def save(self, commit=True):
         """
-        Sobrescrevemos o save para garantir que o campo 'tamanho_carga'
-        receba o mesmo valor que o usuário selecionou em 'porte_carga'.
-        E para NÃO vincular motorista/retirado_por na criação.
+        Garante que usuários de loja sempre criem transferência de saída.
+        Também evita vincular motorista/retirado_por na criação.
         """
         instance = super().save(commit=False)
 
-        # ✅ Se tipo estiver travado e não vier no POST, garante coerência para loja
-        if self.user and getattr(self.user, "loja_perfil", None) and not getattr(self.user, "is_staff", False):
-            instance.tipo = "saida"
+        is_admin = self.user and (self.user.is_staff or self.user.is_superuser)
+        user_loja = self._get_loja_do_usuario(self.user)
 
-        # ✅ NÃO vincula motorista nem retirado_por na criação
+        if self.user and user_loja and not is_admin:
+            instance.tipo = "saida"
+            instance.loja_origem = user_loja
+
         instance.motorista = None
         instance.retirado_por = None
 
-        # ✅ Sincroniza os campos para evitar erro nos filtros da lista
-        porte_selecionado = self.cleaned_data.get('porte_carga')
+        porte_selecionado = self.cleaned_data.get("porte_carga")
         if porte_selecionado:
             instance.tamanho_carga = porte_selecionado
 
         if commit:
             instance.save()
+
         return instance

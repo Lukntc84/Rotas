@@ -548,11 +548,12 @@ def transferencia_nova(request):
             t = form.save(commit=False)
             t.criado_por = request.user
             t.status = "pendente"
+        
+        user_loja = _get_loja_usuario(request.user)
 
-            user_loja = getattr(request.user, "loja_perfil", None)
-            if user_loja and not request.user.is_staff:
-                t.tipo = "saida"
-                t.loja_origem = user_loja
+        if user_loja and not request.user.is_staff and not request.user.is_superuser:
+            t.tipo = "saida"
+            t.loja_origem = user_loja
 
             t.save()
             messages.success(request, f"Transferência criada com sucesso!")
@@ -647,10 +648,11 @@ def _get_loja_usuario(user):
         return None
 
     perfil = getattr(user, "perfil", None)
-    if perfil and hasattr(perfil, "loja"):
-        return perfil.loja
+    loja_nova = getattr(perfil, "loja", None)
 
-    return None
+    loja_antiga = getattr(user, "loja_perfil", None)
+
+    return loja_nova or loja_antiga
 
 @login_required
 def minhas_paradas(request):
