@@ -532,10 +532,13 @@ def transferencias_lista(request):
     return render(request, "painel/transferencias_lista.html", {
         "transferencias_disponiveis": transferencias_disponiveis,
         "transferencias_em_rota": transferencias_em_rota,
-       "transferencias_entregues": transferencias_entregues,
-        "lojas": Loja.objects.filter(ativa=True).order_by('nome'),
+        "transferencias_entregues": transferencias_entregues,
+        "lojas": Loja.objects.filter(ativa=True).order_by("nome"),
         "rota_ativa": rota_ativa,
         "is_motoboy": is_motoboy,
+        "is_admin": is_admin,
+        "is_operador": is_operador,
+        "loja_logada": loja_logada,
     })
     
 @login_required
